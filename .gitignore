@@ -1,0 +1,9 @@
+# OS
+.DS_Store
+
+# Lokale Konfiguration (Credentials)
+config.local.php
+
+# IDE
+.vscode/
+.idea/
