@@ -400,6 +400,87 @@ cmd_cleanup() {
     echo "$result" | jq -r '"  Gelöschte Kategorien: \(.deletedCategories | length)\n  Gelöschte Tags: \(.deletedTags | length)"'
 }
 
+cmd_set_source() {
+    local source="${1:-}"
+    local flag="${2:-}"
+    local value="${3:-}"
+    local auto_confirm="${4:-}"
+
+    if [[ -z "$source" || -z "$flag" || -z "$value" ]]; then
+        echo -e "${RED}Verwendung: $0 set-source <autor> --url <muster> [--yes]${NC}" >&2
+        echo -e "${RED}       oder: $0 set-source <autor> --from <alter-autor> [--yes]${NC}" >&2
+        echo "" >&2
+        echo "  Beispiel: $0 set-source 'Twity' --url 'twity'" >&2
+        echo "  Beispiel: $0 set-source 'Twity' --from 'Unbekannt' --yes" >&2
+        exit 1
+    fi
+
+    local json_data
+    case "$flag" in
+        --url)
+            json_data=$(jq -n --arg source "$source" --arg url "$value" \
+                '{source: $source, urlContains: $url, dryRun: true}')
+            ;;
+        --from)
+            json_data=$(jq -n --arg source "$source" --arg from "$value" \
+                '{source: $source, from: $from, dryRun: true}')
+            ;;
+        *)
+            echo -e "${RED}Unbekanntes Flag: ${flag}. Verwende --url oder --from.${NC}" >&2
+            exit 1
+            ;;
+    esac
+
+    echo -e "${BOLD}${BLUE}═══ Autor/Quelle setzen ═══${NC}"
+    echo ""
+
+    # Dry run first
+    local preview
+    preview=$(api_post "${ADMIN_URL}?action=set-source" "$json_data")
+
+    local count
+    count=$(echo "$preview" | jq '.matchingCount')
+
+    if [[ "$count" -eq 0 ]]; then
+        echo -e "${YELLOW}Keine passenden Posts gefunden.${NC}"
+        return
+    fi
+
+    echo -e "Neuer Autor: ${BOLD}${source}${NC}"
+    echo -e "Betroffene Posts: ${count}"
+    echo ""
+    echo "$preview" | jq -r '.matchingPosts[] | "  ID \(.id) │ \(.source) │ \(.title)"'
+    echo ""
+
+    if [[ "$auto_confirm" != "--yes" ]]; then
+        read -rp "Autor für diese ${count} Posts auf \"${source}\" setzen? (j/N) " confirm
+        if [[ ! "$confirm" =~ ^[jJyY]$ ]]; then
+            echo "Abgebrochen."
+            exit 0
+        fi
+    fi
+
+    # Execute
+    local exec_data
+    case "$flag" in
+        --url)
+            exec_data=$(jq -n --arg source "$source" --arg url "$value" \
+                '{source: $source, urlContains: $url}')
+            ;;
+        --from)
+            exec_data=$(jq -n --arg source "$source" --arg from "$value" \
+                '{source: $source, from: $from}')
+            ;;
+    esac
+
+    local result
+    result=$(api_post "${ADMIN_URL}?action=set-source" "$exec_data")
+
+    echo ""
+    echo -e "${GREEN}✓ Autor aktualisiert!${NC}"
+    echo "$result" | jq -r '"  Aktualisierte Posts: \(.updatedPosts)"'
+}
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Hilfe
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -434,6 +515,10 @@ ${BOLD}Befehle:${NC}
   ${CYAN}Posts:${NC}
     update-post <id> <kat> [tags] Post-Kategorie/Tags aktualisieren
 
+  ${CYAN}Autoren:${NC}
+    set-source <autor> --url <muster>   Autor anhand URL-Muster setzen
+    set-source <autor> --from <alt>     Autor anhand altem Namen ändern
+
   ${CYAN}Bereinigung:${NC}
     cleanup [--dry-run]           Verwaiste Kategorien/Tags löschen
 
@@ -443,6 +528,8 @@ ${BOLD}Beispiele:${NC}
   $0 merge-tag 'AI' 'KI'
   $0 rename-cat 'Devlopment' 'Entwicklung'
   $0 update-post 5 KI Azure Copilot
+  $0 set-source 'Twity' --url 'twity'
+  $0 set-source 'Twity' --from 'Unbekannt'
   $0 cleanup --dry-run
 
 EOF
@@ -469,6 +556,7 @@ main() {
         rename-cat)   cmd_rename_cat "$@" ;;
         rename-tag)   cmd_rename_tag "$@" ;;
         update-post)  cmd_update_post "$@" ;;
+        set-source)   cmd_set_source "$@" ;;
         cleanup)      cmd_cleanup "$@" ;;
         help|--help|-h)
             show_help ;;
