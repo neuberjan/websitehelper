@@ -65,6 +65,26 @@ CREATE TABLE IF NOT EXISTS `newsletter_send_log` (
 
 
 -- ============================================================
+-- Kategorien
+-- Jeder Post hat genau eine Kategorie (Spalte posts.category).
+-- Die Tabelle definiert gültige Kategorien mit optionaler Farbe.
+-- Farbe: Hex-Code für Badge-Hintergrund, NULL = Standard (Accent).
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `categories` (
+  `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `name`        VARCHAR(100) NOT NULL COMMENT 'Anzeigename der Kategorie',
+  `slug`        VARCHAR(100) NOT NULL COMMENT 'URL-freundlicher Slug',
+  `description` VARCHAR(500) DEFAULT NULL COMMENT 'Optionale Beschreibung',
+  `color`       VARCHAR(7)   DEFAULT NULL COMMENT 'Hex-Farbe z.B. #7c3aed (NULL = Standardfarbe)',
+  `created_at`  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE KEY `uq_category_name` (`name`),
+  UNIQUE KEY `uq_category_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
 -- Tags
 -- Einheitliches Konzept für Themen-Zuordnung (ersetzt Kategorien + Tags).
 -- Jeder Post kann beliebig viele Tags haben (n:m).

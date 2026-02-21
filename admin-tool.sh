@@ -121,6 +121,37 @@ api_post() {
     echo "$body"
 }
 
+# ── API-Request (PATCH) ──
+api_patch() {
+    local url="$1"
+    local data="$2"
+    local response
+    local http_code
+
+    response=$(curl -sS -w "\n%{http_code}" \
+        -X PATCH \
+        -H "Authorization: Bearer ${BC_API_KEY}" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json" \
+        -d "$data" \
+        "$url" 2>&1) || {
+        echo -e "${RED}Fehler: Verbindung zu ${url} fehlgeschlagen.${NC}" >&2
+        exit 1
+    }
+
+    http_code=$(echo "$response" | tail -1)
+    local body
+    body=$(echo "$response" | sed '$d')
+
+    if [[ "$http_code" -ge 400 ]]; then
+        echo -e "${RED}API-Fehler (HTTP $http_code):${NC}" >&2
+        echo "$body" | jq . 2>/dev/null || echo "$body" >&2
+        exit 1
+    fi
+
+    echo "$body"
+}
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Befehle
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -193,7 +224,7 @@ cmd_categories() {
     local result
     result=$(api_get "${API_URL}/categories.php")
 
-    echo "$result" | jq -r '.categories[] | "  ID \(.id) │ \(.name) (slug: \(.slug))"'
+    echo "$result" | jq -r '.categories[] | "  ID \(.id) │ \(.name) │ \(.color // "—") │ slug: \(.slug)"'
     echo ""
     local total
     total=$(echo "$result" | jq '.total')
@@ -481,6 +512,69 @@ cmd_set_source() {
     echo "$result" | jq -r '"  Aktualisierte Posts: \(.updatedPosts)"'
 }
 
+# ── set-colors: Alle Kategoriefarben setzen ──
+cmd_set_colors() {
+    echo -e "${BOLD}${BLUE}═══ Kategoriefarben setzen ═══${NC}"
+    echo ""
+
+    # Curated color palette matching the design system
+    local color_data='[
+        {"name": "Development",     "color": "#7c3aed"},
+        {"name": "Administration",  "color": "#d97706"},
+        {"name": "Integration",     "color": "#059669"},
+        {"name": "Performance",     "color": "#db2777"},
+        {"name": "Security",        "color": "#dc2626"},
+        {"name": "News",            "color": "#0284c7"},
+        {"name": "Other",           "color": "#0d9488"},
+        {"name": "Release",         "color": "#4f6ef7"},
+        {"name": "Cloud",           "color": "#d97706"},
+        {"name": "KI",              "color": "#db2777"},
+        {"name": "DevOps",          "color": "#7c3aed"},
+        {"name": "Community",       "color": "#0d9488"},
+        {"name": "Konferenz",       "color": "#0d9488"},
+        {"name": "Troubleshooting", "color": "#dc2626"},
+        {"name": "Azure",           "color": "#0284c7"},
+        {"name": "Licensing",       "color": "#d97706"},
+        {"name": "Power Platform",  "color": "#059669"},
+        {"name": "Reporting",       "color": "#7c3aed"},
+        {"name": "Testing",         "color": "#db2777"},
+        {"name": "Upgrade",         "color": "#0284c7"},
+        {"name": "Workflow",        "color": "#059669"},
+        {"name": "Migration",       "color": "#d97706"},
+        {"name": "Data Management", "color": "#0d9488"},
+        {"name": "API",             "color": "#4f6ef7"}
+    ]'
+
+    local count
+    count=$(echo "$color_data" | jq 'length')
+    echo -e "Setze Farben für ${BOLD}${count}${NC} Kategorien..."
+    echo ""
+
+    # Preview
+    echo "$color_data" | jq -r '.[] | "  \(.color) │ \(.name)"'
+    echo ""
+
+    local auto_confirm="${1:-}"
+    if [[ "$auto_confirm" != "--yes" ]]; then
+        read -rp "Farben setzen? (j/N) " confirm
+        if [[ "$confirm" != "j" && "$confirm" != "J" ]]; then
+            echo -e "${YELLOW}Abgebrochen.${NC}"
+            return
+        fi
+    fi
+
+    local result
+    result=$(api_patch "${API_URL}/categories.php" "$color_data")
+
+    echo ""
+    echo -e "${GREEN}✓ Farben aktualisiert!${NC}"
+    echo "$result" | jq -r '"  Aktualisiert: \(.updated) von \(.total)"'
+    if echo "$result" | jq -e '.errors | length > 0' >/dev/null 2>&1; then
+        echo -e "${YELLOW}  Hinweise:${NC}"
+        echo "$result" | jq -r '.errors[] | "  ⚠ \(.)"'
+    fi
+}
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Hilfe
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -519,6 +613,9 @@ ${BOLD}Befehle:${NC}
     set-source <autor> --url <muster>   Autor anhand URL-Muster setzen
     set-source <autor> --from <alt>     Autor anhand altem Namen ändern
 
+  ${CYAN}Farben:${NC}
+    set-colors [--yes]                  Kategoriefarben setzen (Bulk)
+
   ${CYAN}Bereinigung:${NC}
     cleanup [--dry-run]           Verwaiste Kategorien/Tags löschen
 
@@ -530,6 +627,7 @@ ${BOLD}Beispiele:${NC}
   $0 update-post 5 KI Azure Copilot
   $0 set-source 'Twity' --url 'twity'
   $0 set-source 'Twity' --from 'Unbekannt'
+  $0 set-colors --yes
   $0 cleanup --dry-run
 
 EOF
@@ -557,6 +655,7 @@ main() {
         rename-tag)   cmd_rename_tag "$@" ;;
         update-post)  cmd_update_post "$@" ;;
         set-source)   cmd_set_source "$@" ;;
+        set-colors)   cmd_set_colors "$@" ;;
         cleanup)      cmd_cleanup "$@" ;;
         help|--help|-h)
             show_help ;;
