@@ -183,6 +183,30 @@ CREATE TABLE IF NOT EXISTS `subscriber_tags` (
 
 
 -- ============================================================
+-- Wöchentliche Zusammenfassungen mit Audio (TTS)
+-- Speichert den Zusammenfassungstext + MP3-Audiodatei pro KW.
+-- Die Audio-Datei wird als LONGBLOB gespeichert (MP3, ~1-3 MB).
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `weekly_summaries` (
+  `id`              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `kw`              TINYINT UNSIGNED NOT NULL COMMENT 'Kalenderwoche (1-53)',
+  `year`            SMALLINT UNSIGNED NOT NULL COMMENT 'Jahr',
+  `summary_text`    TEXT             NOT NULL COMMENT 'Zusammenfassungstext der Woche',
+  `audio_data`      LONGBLOB         DEFAULT NULL COMMENT 'MP3-Audio als Binary (LONGBLOB)',
+  `audio_mime_type`  VARCHAR(50)     DEFAULT 'audio/mpeg' COMMENT 'MIME-Type der Audiodatei',
+  `audio_size_bytes` INT UNSIGNED    DEFAULT NULL COMMENT 'Größe der Audiodatei in Bytes',
+  `created_at`      TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
+
+  -- Pro KW/Jahr nur eine Zusammenfassung
+  UNIQUE KEY `uq_kw_year` (`kw`, `year`),
+
+  -- Für schnelle Abfrage nach Jahr + KW
+  INDEX `idx_year_kw` (`year`, `kw`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
 -- Beispiel-INSERT (so wie n8n ihn ausführen würde):
 -- ============================================================
 -- INSERT IGNORE INTO posts (title, summary, source, source_url, date, kw, year)
