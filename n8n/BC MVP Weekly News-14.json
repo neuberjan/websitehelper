@@ -1,0 +1,933 @@
+{
+  "name": "BC MVP Weekly News",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "test-mode-toggle",
+              "name": "testMode",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "48a17a7c-8e74-4b4c-aef0-7a33bfe04610",
+      "name": "⚙️ Test Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        54400,
+        41136
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://bcbeacon.de/api/categories.php",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "a1bfc68c-0ae6-4970-8b87-98e77796588a",
+      "name": "Fetch Categories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        54576,
+        41136
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://bcbeacon.de/api/tags.php",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fecea36b-2fb2-4db9-82b1-3b9ad16cedba",
+      "name": "Fetch Tags",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        54736,
+        41136
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Fasse diesen Business Central Artikel auf Deutsch zusammen. ALLE Texte müssen auf Deutsch sein, auch der Titel!\\n\\nKategorisierung und Tags werden in einem separaten Schritt zugewiesen – gib hier KEINE Category oder Tags aus.\\n\\n## Artikel\\n- Originaltitel: ' + $json.title + '\\n- Autor: ' + ($json.creator || $json['dc:creator'] || $json.feedAuthor || 'Unbekannt') + '\\n- Quelle: ' + ($json.feedAuthor || 'Unbekannt') + '\\n- URL: ' + $json.link + '\\n- Veröffentlicht: ' + ($json.pubDate || '').substring(0, 16) + '\\n- Typ: ' + ($json.hasTranscript ? 'Video-Transkript' : 'Blogbeitrag') + '\\n\\n## Inhalt:\\n' + ($json.data || '').substring(0, 10000) + '\\n\\n## Ausgabe als JSON (kein Markdown):\\n{\\n  \"Title\": \"<Deutscher Titel – übersetze den Originaltitel sinngemäß ins Deutsche>\",\\n  \"Link\": \"' + $json.link + '\",\\n  \"Summary\": \"<2-3 Sätze auf Deutsch: wichtigste technische Erkenntnis für BC-Entwickler>\",\\n  \"Creator\": \"' + ($json.creator || $json['dc:creator'] || $json.feedAuthor || 'Unbekannt') + '\"\\n}' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Du bist ein technischer Redakteur für Business Central. ALLE Ausgaben müssen auf Deutsch sein – insbesondere auch der Title! Übersetze englische Titel sinngemäß ins Deutsche (z.B. 'How to Debug AL Code' → 'So debuggen Sie AL-Code'). Fachbegriffe wie 'Business Central', 'AL', 'API', 'Docker' etc. dürfen englisch bleiben. Fasse Artikel in 2-3 Sätzen auf Deutsch zusammen, mit Fokus auf die wichtigste technische Erkenntnis. Bei Video-Transkripten extrahiere die Kernaussage und ignoriere Füllwörter. Gib NUR valides JSON mit der exakt gezeigten Struktur zurück (Title, Link, Summary, Creator – KEINE Category oder Tags). Verwende die vorgegebenen Link- und Creator-Werte unverändert."
+            }
+          ]
+        }
+      },
+      "id": "1adc1847-f969-48ea-ba27-7c81fdae8e8b",
+      "name": "Page Summary Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        57088,
+        41408
+      ],
+      "retryOnFail": false,
+      "waitBetweenTries": 5000,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        56160,
+        41376
+      ],
+      "id": "c73ff31a-d0ee-4449-ad3a-7fba47cbc68c",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.Feed }}",
+        "options": {}
+      },
+      "id": "cc87afed-91a3-4fef-b579-6123518300a4",
+      "name": "Read RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        55328,
+        41520
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Author aus der Data Table an jedes RSS-Item anhängen\nconst feedAuthor = $('Loop Over Items1').first().json.Author || '';\nconst items = $input.all();\nreturn items.map(item => ({\n  json: {\n    ...item.json,\n    feedAuthor: feedAuthor\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        55328,
+        41712
+      ],
+      "id": "b66630db-6d5c-4d4c-9ef9-3b423b449d51",
+      "name": "Enrich with Source"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "3758fcfd-44ac-4001-90b5-8e50d43dbc9f",
+      "name": "Start",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        54208,
+        41136
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Workflow Konfiguration\n\n**Test Mode (⚙️ Test Config):**\n- `testMode`: true = Test-Modus\n  → Nur an Jan.Neuber@googlemail.com\n  → Already Sent wird ignoriert\n- `testMode`: false = Produktiv\n  → An alle Empfänger\n  → Nur neue Feeds\n\n---\n🔄 **Duplikat-Erkennung (v12):**\nKeine interne n8n-DataTable mehr!\nStattdessen: API-Abfrage an\n`existing_urls.php` (alle URLs).\n→ Robuster: Wenn Send to API fehlschlägt,\n  wird der Post beim nächsten Lauf erneut\n  verarbeitet (kein Datenverlust!).\n→ INSERT IGNORE in write.php verhindert\n  Duplikate in der DB.\n→ Send to API hat Retry (3x, 5s Pause).\n\n---\n🏷️ **Tags & Categories (2-Stufen-Ansatz):**\n1. **Page Summary Chain:** Erzeugt nur\n   Title + Summary + Creator (keine\n   Kategorie/Tags).\n2. **Categorize Post:** Dedizierter Node\n   der NUR für Kategorisierung/Tags\n   zuständig ist. Arbeitet auf dem kurzen\n   Summary-Text → bessere Ergebnisse.\n\nVorhandene Tags und Kategorien werden\nper API abgerufen (Fetch Categories +\nFetch Tags). Beide KI-Nodes wählen aus\nder bestehenden Liste.\n\n---\n📹 **YouTube Transkript (Supadata):**\nBei Video-Posts (z.B. hougaard.com) mit\nwenig Text (<500 Zeichen) wird automatisch\ndas YouTube-Transkript via Supadata API\ngeholt. Bei Fehler geht's ohne weiter.\n\n**Supadata Node installieren:**\nSettings → Community Nodes → Install\n→ n8n-nodes-supadata",
+        "height": 700,
+        "width": 480
+      },
+      "id": "d2343724-7cb3-4fe7-adfb-3e10bfbfd1ac",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        54208,
+        40336
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        56640,
+        41328
+      ],
+      "id": "185c1887-a1c9-4f28-b818-a7f550450ab2",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "6611f014-439f-4555-a673-53d7f3ea7c03",
+      "name": "Fetch Page Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        56304,
+        41520
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Robustes HTML Content Cleanup V2 für Business Central Blogs\n// Optimiert für: waldo.be, demiliani.com, vjeko.com, yzhums.com, hougaard.com, kauffmann.nl, mynavblog.com, katson.com\n// V2: Bessere Extraktion für verschachtelte divs und Elementor-Seiten\n\nfunction cleanHtml(html) {\n  if (!html) return \"\";\n  \n  let content = null;\n  \n  // 1. CONTENT EXTRAKTION - Verbesserte Strategien\n  \n  // Strategie A: entry-content (WordPress) - OHNE schließendes div (wegen Verschachtelung)\n  const entryMatch = html.match(/<div[^>]*class=\"[^\"]*\\bentry-content\\b[^\"]*\"[^>]*>([\\s\\S]+)/i);\n  if (entryMatch) {\n    let inner = entryMatch[1];\n    // Finde natürliches Ende (footer, comments, etc.)\n    const endPatterns = [\n      /<footer\\b/i,\n      /<div[^>]*class=\"[^\"]*\\b(?:comments|comment-respond|related|share-buttons?|author-box|post-navigation|yarpp-related)\\b/i,\n      /<section[^>]*class=\"[^\"]*\\b(?:comments|related)\\b/i,\n      /<!--\\s*[.\\/]entry-content/i,\n      /<\\/article\\s*>/i,\n      /<div[^>]*id=\"comments\"/i\n    ];\n    let endPos = inner.length;\n    for (const pat of endPatterns) {\n      const m = inner.match(pat);\n      if (m && m.index < endPos && m.index > 500) endPos = m.index;\n    }\n    if (endPos > 500) content = inner.substring(0, endPos);\n  }\n  \n  // Strategie B: Elementor - Sammle ALLE widget-container mit Absatz-Content (ZUERST, da vollständiger)\n  if (!content || content.length < 500) {\n    const elementorBlocks = [];\n    const regex = /<div class=\"elementor-widget-container\">([\\s\\S]+?)<\\/div>\\s*<\\/div>/gi;\n    let match;\n    while ((match = regex.exec(html)) !== null) {\n      const block = match[1];\n      // Überspringe Comment-Formulare und Author-Boxen\n      if (block.includes('Leave a Reply') || block.includes('Cancel reply')) continue;\n      // Nur Blöcke mit echtem Textinhalt (<p> Tags und >15 Wörter)\n      if (block.includes('<p') || block.includes('<h')) {\n        const textOnly = block.replace(/<[^>]+>/g, ' ');\n        const words = textOnly.split(/\\s+/).filter(w => w.length > 2).length;\n        if (words > 15) elementorBlocks.push(block);\n      }\n    }\n    if (elementorBlocks.length >= 3) {\n      // Wenn 3+ Blöcke gefunden, ist dies wahrscheinlich Elementor-Content\n      content = elementorBlocks.join('\\n\\n');\n    }\n  }\n  \n  // Strategie B2: Elementor theme-post-content (Fallback für Video-Posts wie hougaard.com)\n  if (!content || content.length < 100) {\n    const themePostMatch = html.match(/data-widget_type=\"theme-post-content[^\"]*\"[^>]*>\\s*<div class=\"elementor-widget-container\">([\\s\\S]+?)<\\/div>\\s*<\\/div>/i);\n    if (themePostMatch && themePostMatch[1].length > 50) {\n      content = themePostMatch[1];\n    }\n  }\n  \n  // Strategie C: article Tag\n  if (!content || content.length < 500) {\n    const articleMatch = html.match(/<article[^>]*>([\\s\\S]+?)<\\/article>/i);\n    if (articleMatch && articleMatch[1].length > (content ? content.length : 0)) {\n      content = articleMatch[1];\n    }\n  }\n  \n  // Strategie D: post-content div (ähnlich wie entry-content)\n  if (!content || content.length < 500) {\n    const postMatch = html.match(/<div[^>]*class=\"[^\"]*\\bpost-content\\b[^\"]*\"[^>]*>([\\s\\S]+)/i);\n    if (postMatch) {\n      let inner = postMatch[1];\n      const endPatterns = [/<footer\\b/i, /<\\/article\\s*>/i, /<div[^>]*class=\"[^\"]*\\bcomments\\b/i];\n      let endPos = Math.min(inner.length, 50000);\n      for (const pat of endPatterns) {\n        const m = inner.match(pat);\n        if (m && m.index < endPos && m.index > 500) endPos = m.index;\n      }\n      if (endPos > (content ? content.length : 0)) content = inner.substring(0, endPos);\n    }\n  }\n  \n  // Strategie E: main Tag\n  if (!content || content.length < 500) {\n    const mainMatch = html.match(/<main[^>]*>([\\s\\S]+?)<\\/main>/i);\n    if (mainMatch && mainMatch[1].length > (content ? content.length : 0)) {\n      content = mainMatch[1];\n    }\n  }\n  \n  // Fallback: Body\n  if (!content || content.length < 300) {\n    const bodyMatch = html.match(/<body[^>]*>([\\s\\S]+?)<\\/body>/i);\n    content = bodyMatch ? bodyMatch[1] : html;\n  }\n  \n  // 2. NOISE ENTFERNUNG - Aggressive Bereinigung\n  const noisePatterns = [\n    // Scripts und Styles\n    /<script[^>]*>[\\s\\S]*?<\\/script>/gi,\n    /<style[^>]*>[\\s\\S]*?<\\/style>/gi,\n    /<noscript[^>]*>[\\s\\S]*?<\\/noscript>/gi,\n    // Strukturelle Elemente\n    /<nav[^>]*>[\\s\\S]*?<\\/nav>/gi,\n    /<footer[^>]*>[\\s\\S]*?<\\/footer>/gi,\n    /<header[^>]*>[\\s\\S]*?<\\/header>/gi,\n    /<aside[^>]*>[\\s\\S]*?<\\/aside>/gi,\n    // Embeds und Forms\n    /<iframe[^>]*>[\\s\\S]*?<\\/iframe>/gi,\n    /<form[^>]*>[\\s\\S]*?<\\/form>/gi,\n    /<svg[^>]*>[\\s\\S]*?<\\/svg>/gi,\n    // Kommentare\n    /<!--[\\s\\S]*?-->/gi,\n    // WordPress-spezifische Noise\n    /<div[^>]*class=\"[^\"]*\\b(?:sharedaddy|share-buttons|social-share|post-ratings|author-box|related-posts|comments-area|newsletter|cookie|popup|modal|sidebar|widget|advertisement|wp-block-embed|jetpack)\\b[^\"]*\"[^>]*>[\\s\\S]*?<\\/div>/gi,\n    // Interaktive Elemente\n    /<(?:button|input|select|textarea)[^>]*\\/?>(?:[\\s\\S]*?<\\/(?:button|select|textarea)>)?/gi,\n    // Bilder mit langen Data-URLs\n    /<img[^>]*src=\"data:[^\"]{100,}\"[^>]*>/gi,\n    // Rating/Vote Widgets\n    /<div[^>]*class=\"[^\"]*\\bpost-ratings\\b[^\"]*\"[^>]*>[\\s\\S]*?<\\/div>/gi\n  ];\n  \n  for (const pattern of noisePatterns) {\n    content = content.replace(pattern, ' ');\n  }\n  \n  // 3. CODE-BLÖCKE BEWAHREN\n  const codeBlocks = [];\n  content = content.replace(/<pre[^>]*>([\\s\\S]*?)<\\/pre>/gi, (match, code) => {\n    const cleanCode = code.replace(/<[^>]+>/g, '').trim();\n    if (cleanCode.length > 10) {\n      codeBlocks.push(cleanCode);\n      return `\\n\\n[CODE_BLOCK_${codeBlocks.length - 1}]\\n\\n`;\n    }\n    return '';\n  });\n  \n  // 4. STRUKTUR IN TEXT UMWANDELN\n  // Überschriften\n  content = content.replace(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/gi, '\\n\\n# $1\\n');\n  content = content.replace(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/gi, '\\n\\n## $1\\n');\n  content = content.replace(/<h3[^>]*>([\\s\\S]*?)<\\/h3>/gi, '\\n\\n### $1\\n');\n  content = content.replace(/<h[4-6][^>]*>([\\s\\S]*?)<\\/h[4-6]>/gi, '\\n\\n#### $1\\n');\n  // Paragraphen und Breaks\n  content = content.replace(/<\\/p>/gi, '\\n\\n');\n  content = content.replace(/<br\\s*\\/?>/gi, '\\n');\n  // Listen\n  content = content.replace(/<li[^>]*>/gi, '\\n• ');\n  content = content.replace(/<\\/li>/gi, '');\n  // Hervorhebungen (optional behalten)\n  content = content.replace(/<strong[^>]*>([\\s\\S]*?)<\\/strong>/gi, '**$1**');\n  content = content.replace(/<b>([\\s\\S]*?)<\\/b>/gi, '**$1**');\n  content = content.replace(/<em[^>]*>([\\s\\S]*?)<\\/em>/gi, '_$1_');\n  content = content.replace(/<code[^>]*>([\\s\\S]*?)<\\/code>/gi, '`$1`');\n  // Links - nur Text behalten\n  content = content.replace(/<a[^>]*>([\\s\\S]*?)<\\/a>/gi, '$1');\n  \n  // 5. ALLE ÜBRIGEN TAGS ENTFERNEN\n  content = content.replace(/<[^>]+>/g, ' ');\n  \n  // 6. HTML-ENTITIES DECODIEREN\n  const entities = {\n    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '\"',\n    '&#39;': \"'\", '&apos;': \"'\", '&nbsp;': ' ',\n    '&mdash;': '—', '&ndash;': '–', '&hellip;': '…',\n    '&copy;': '©', '&reg;': '®', '&trade;': '™',\n    '&euro;': '€', '&pound;': '£', '&yen;': '¥',\n    '&laquo;': '«', '&raquo;': '»', '&bull;': '•'\n  };\n  for (const [entity, char] of Object.entries(entities)) {\n    content = content.replace(new RegExp(entity, 'gi'), char);\n  }\n  // Numerische Entities\n  content = content.replace(/&#(\\d+);/g, (m, n) => {\n    try { return String.fromCharCode(parseInt(n)); } catch(e) { return ''; }\n  });\n  content = content.replace(/&#x([0-9a-f]+);/gi, (m, n) => {\n    try { return String.fromCharCode(parseInt(n, 16)); } catch(e) { return ''; }\n  });\n  \n  // 7. CODE-BLÖCKE WIEDERHERSTELLEN\n  for (let i = 0; i < codeBlocks.length; i++) {\n    content = content.replace(`[CODE_BLOCK_${i}]`, `\\n\\`\\`\\`\\n${codeBlocks[i]}\\n\\`\\`\\`\\n`);\n  }\n  \n  // 8. WHITESPACE NORMALISIEREN\n  content = content.replace(/[ \\t]+/g, ' ');\n  content = content.replace(/\\n[ \\t]+/g, '\\n');\n  content = content.replace(/[ \\t]+\\n/g, '\\n');\n  content = content.replace(/\\n{3,}/g, '\\n\\n');\n  content = content.trim();\n  \n  // 9. INTELLIGENTES ABSCHNEIDEN bei 8000 Zeichen\n  const maxLen = 8000;\n  if (content.length > maxLen) {\n    content = content.substring(0, maxLen);\n    // Schneide am Satzende oder Absatz ab\n    const lastPeriod = content.lastIndexOf('. ');\n    const lastNewline = content.lastIndexOf('\\n\\n');\n    const cutPos = Math.max(lastPeriod, lastNewline);\n    if (cutPos > maxLen * 0.75) {\n      content = content.substring(0, cutPos + 1);\n    }\n  }\n  \n  return content;\n}\n\nconst input = $input.first();\nconst htmlContent = input.json.data || input.json.body || '';\nconst cleanContent = cleanHtml(htmlContent);\n\nreturn [{\n  json: {\n    ...input.json,\n    data: cleanContent\n  }\n}];"
+      },
+      "id": "fd523465-f100-4293-96ad-354b0d45707f",
+      "name": "Clean HTML Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        56480,
+        41520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Den Text aus dem Input holen\nlet rawText = $input.first().json.text;\n\n// 2. Die Markdown-Formatierung (```json und ```) entfernen\nconst cleanJsonString = rawText.replace(/```json\\n?|```/g, '').trim();\n\n// 3. pubDate aus dem originalen RSS-Item holen (via Merge1)\nconst pubDate = $('Merge1').item.json.pubDate || $('Merge1').item.json.isoDate || '';\n\ntry {\n  const parsedData = JSON.parse(cleanJsonString);\n\n  // pubDate an das Ergebnis anhängen\n  return {\n    json: {\n      ...parsedData,\n      pubDate: pubDate\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      error: \"Parsing fehlgeschlagen\",\n      raw: cleanJsonString\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        57456,
+        41408
+      ],
+      "id": "d6efb61f-adb9-4d9c-9c2f-208e5e88dedf",
+      "name": "Convert to Json"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Ordne diesem Business Central Artikel eine Kategorie und Tags zu.\\n\\n## Verfügbare Kategorien (du MUSST eine davon wählen!):\\n' + (($('Fetch Categories').first().json.categories || []).map(c => c.name).join(', ') || 'Entwicklung, KI, News, Azure, Community, Cloud, Performance, Telemetrie, Integration, Konferenz, Administration, Tools & Extensions, Sicherheit, DevOps, Troubleshooting') + '\\n\\n## Verfügbare Tags (wähle 1-3 passende – bevorzuge IMMER bestehende Tags!):\\n' + (($('Fetch Tags').first().json.tags || []).map(t => t.name).join(', ') || '(noch keine vorhanden)') + '\\n\\n## Artikel\\n- Titel: ' + ($json.Title || '') + '\\n- Zusammenfassung: ' + ($json.Summary || '') + '\\n- Quelle: ' + ($json.Creator || 'Unbekannt') + '\\n\\n## Ausgabe als JSON (kein Markdown):\\n{\\n  \"Category\": \"<EXAKT eine der obigen Kategorien>\",\\n  \"Tags\": [\"<1-3 Tags, bevorzugt aus der obigen Liste>\"]\\n}' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Du bist ein Klassifizierungs-Experte für Business Central Inhalte. Deine einzige Aufgabe: Kategorie und Tags zuweisen.\n\n## KATEGORIE – PFLICHT aus der Liste wählen:\n(1) Du MUSST eine Kategorie aus der vorgegebenen Liste wählen (exakte Schreibweise!).\n(2) Erfinde KEINE neuen Kategorien. Es gibt immer eine passende in der Liste.\n(3) Im Zweifel wähle die breiteste passende Kategorie (z.B. 'Entwicklung' für Programmier-Themen, 'News' für allgemeine Neuigkeiten).\n(4) VERBOTENE englische Varianten – verwende IMMER den deutschen Namen:\n    - 'Development' / 'Dev' / 'Programming' → 'Entwicklung'\n    - 'AI' / 'Artificial Intelligence' → 'KI'\n    - 'Security' → 'Sicherheit'\n    - 'Events' → 'Community' oder 'Konferenz'\n(5) Eigennamen (Azure, SaaS) bleiben englisch.\n\n## TAGS – bevorzuge bestehende aus der Liste:\n(1) Wähle 1-3 Tags aus der vorgegebenen Liste (exakte Schreibweise!).\n(2) Verwende IMMER bestehende Tags wenn thematisch passend.\n(3) Erstelle einen neuen Tag NUR wenn wirklich kein bestehender passt – auf Deutsch, Singular vermeiden (z.B. 'Tipps' nicht 'Tipp').\n(4) VERBOTENE Duplikate:\n    - 'AI' → 'KI', 'Development' → 'Entwicklung', 'Security' → 'Sicherheit'\n    - 'Tip'/'Tips' → 'Tipps', 'Best Practice' → 'Best Practices'\n    - 'OnPrem' → 'On-Premises', 'VSCode' → 'VS Code'\n\nGib NUR valides JSON zurück: { \"Category\": \"...\", \"Tags\": [\"...\"] }"
+            }
+          ]
+        }
+      },
+      "id": "e8431039-9fae-4703-bdd1-701b3b515833",
+      "name": "Categorize Post",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        57712,
+        41408
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {
+          "maxTokens": 256,
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        57712,
+        41600
+      ],
+      "id": "0efcd3aa-1fa8-46d2-83d1-2068a0d8ebff",
+      "name": "OpenRouter Category Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RTrWqEQmbddTAwoi",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Kategorisierung und füge sie zum Summary-Ergebnis hinzu\nlet rawText = $input.first().json.text;\nconst cleanJsonString = rawText.replace(/```json\\n?|```/g, '').trim();\n\n// Summary-Daten aus dem vorherigen Convert to Json Node holen\nconst summaryData = $('Convert to Json').item.json;\n\ntry {\n  const catData = JSON.parse(cleanJsonString);\n  return {\n    json: {\n      ...summaryData,\n      Category: catData.Category || 'News',\n      Tags: catData.Tags || [catData.Category || 'News']\n    }\n  };\n} catch (error) {\n  // Fallback: Kategorie 'News' verwenden\n  return {\n    json: {\n      ...summaryData,\n      Category: 'News',\n      Tags: ['News'],\n      categoryError: 'Kategorisierung fehlgeschlagen: ' + error.message\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        58096,
+        41600
+      ],
+      "id": "912af3f7-958c-4aff-92e4-4bf9b7ae42d3",
+      "name": "Parse Categorization"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        55088,
+        41376
+      ],
+      "id": "3987c16f-dd6a-453e-b145-ec46de85071c",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "LenGAW1YH4NcT7Ml",
+          "mode": "list",
+          "cachedResultName": "RSSFeedsBC",
+          "cachedResultUrl": "/projects/aE1YX2ZiBQXD4ij4/datatables/LenGAW1YH4NcT7Ml"
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        54896,
+        41376
+      ],
+      "id": "2706a3b3-918e-4485-adac-2445a37ed581",
+      "name": "Feeds"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prüfe ob YouTube-Video vorhanden und wenig Content\n// Falls ja, extrahiere Video-ID für Transkript-Abruf\n\nconst input = $input.first();\nconst content = input.json.data || '';\nconst htmlContent = $('Fetch Page Content').item.json.data || '';\n\n// Suche nach YouTube-URLs in Content oder Original-HTML\nconst patterns = [\n  /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})/,\n  /youtube\\.com\\/watch\\?[^\"']*v=([a-zA-Z0-9_-]{11})/\n];\n\nlet videoId = null;\nfor (const pattern of patterns) {\n  const match = (content + htmlContent).match(pattern);\n  if (match) {\n    videoId = match[1];\n    break;\n  }\n}\n\n// Nur Transkript holen wenn: wenig Content (<500 Zeichen) UND YouTube-Video gefunden\nconst needsTranscript = content.length < 500 && videoId !== null;\n\nreturn [{\n  json: {\n    ...input.json,\n    youtubeVideoId: videoId,\n    needsTranscript: needsTranscript\n  }\n}];"
+      },
+      "id": "7d8d8a78-b522-4410-8db8-c85a0b9dd1c0",
+      "name": "Check YouTube Video",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        56672,
+        41520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "needs-transcript",
+              "leftValue": "={{ $json.needsTranscript }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "05557a49-6a5b-4340-8a4b-bfc09cc982f3",
+      "name": "Needs Transcript?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        56832,
+        41520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verarbeite Supadata Transcript-Response\nconst input = $input.first();\nconst originalData = $('Check YouTube Video').item.json;\n\nlet transcript = '';\n\ntry {\n  // Supadata gibt content als Array von {text, offset, duration} zurück\n  const content = input.json.content || [];\n  \n  if (Array.isArray(content)) {\n    transcript = content\n      .map(segment => segment.text || '')\n      .filter(t => t && t.trim())\n      .join(' ')\n      .replace(/\\s+/g, ' ')\n      .trim();\n  } else if (typeof content === 'string') {\n    transcript = content;\n  }\n} catch (e) {\n  transcript = '';\n}\n\n// Kombiniere Original-Content mit Transkript\nlet finalContent = originalData.data || '';\n\nif (transcript && transcript.length > 100) {\n  finalContent = finalContent + '\\n\\n---\\n\\n## 📹 Video Transcript\\n\\n' + transcript;\n}\n\nreturn [{\n  json: {\n    ...originalData,\n    data: finalContent,\n    hasTranscript: transcript.length > 100,\n    transcriptLength: transcript.length\n  }\n}];"
+      },
+      "id": "cd50a464-dabc-433e-a7fa-9f34a6caa106",
+      "name": "Process Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        57472,
+        41888
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kein Transcript verfügbar - Original-Daten zurückgeben\nconst input = $input.first();\n\nreturn [{\n  json: {\n    ...input.json,\n    hasTranscript: false\n  }\n}];"
+      },
+      "id": "01bee5a4-2321-43ae-8c55-1b5ca5f1267a",
+      "name": "No Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        57248,
+        42176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getTranscript",
+        "videoUrl": "=https://www.youtube.com/watch?v={{ $('Check YouTube Video').item.json.youtubeVideoId }}"
+      },
+      "type": "n8n-nodes-supadata.supadata",
+      "typeVersion": 1,
+      "position": [
+        57072,
+        41904
+      ],
+      "id": "c91232db-15c3-4b95-84e1-23634212224d",
+      "name": "Get transcript",
+      "credentials": {
+        "supadataApi": {
+          "id": "QTPk2ydhsYomQL8i",
+          "name": "Supadata account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        54208,
+        41328
+      ],
+      "id": "8d1b6c31-aefa-4ad5-b349-f9a22e62765c",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        57088,
+        41616
+      ],
+      "id": "dabfa5b9-5ba1-4661-ac15-fbf16575fd0d",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RTrWqEQmbddTAwoi",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://bcbeacon.de/api/existing_urls.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        54576,
+        41376
+      ],
+      "id": "9fed859d-8905-418b-b498-14236237d852",
+      "name": "Get Already Sent",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7xAg7RMma7Lu4Cma",
+          "name": "BC Beacon API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json: {}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        54736,
+        41376
+      ],
+      "id": "2c2253d9-e960-4d43-ac1a-5ee6ba0dcc30",
+      "name": "Trigger Feeds"
+    },
+    {
+      "parameters": {
+        "jsCode": "// URL-Normalisierung: Domain-Aliases auflösen + Tracking-Parameter entfernen\nfunction normalizeUrl(url) {\n  if (!url) return '';\n  try {\n    // HTML-Entities dekodieren (RSS-Parser liefert manchmal &amp; statt &)\n    url = url.replace(/&amp;/g, '&');\n    const u = new URL(url);\n    // Domain-Aliases auf kanonische Domain mappen\n    const domainAliases = {\n      'stefanmaron.onrender.com': 'stefanmaron.com',\n    };\n    const host = u.hostname.toLowerCase();\n    if (domainAliases[host]) {\n      u.hostname = domainAliases[host];\n    }\n    // Tracking-Parameter entfernen (utm_*, etc.)\n    const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];\n    trackingParams.forEach(p => u.searchParams.delete(p));\n    // URL ohne Fragment zurückgeben\n    u.hash = '';\n    return u.toString();\n  } catch(e) {\n    return url;\n  }\n}\n\n// Bereits gespeicherte URLs aus der Datenbank laden (via API)\nlet existingUrls = [];\ntry {\n  const apiResponse = $('Get Already Sent').first();\n  existingUrls = apiResponse.json.urls || [];\n} catch(e) {\n  // API nicht erreichbar - sicherheitshalber nichts filtern\n  // (Duplikate werden von INSERT IGNORE in write.php abgefangen)\n  existingUrls = [];\n}\n// Normalisierte DB-URLs für den Vergleich\nconst sentLinks = new Set(existingUrls.map(normalizeUrl));\n\n// Nur Items behalten deren Link noch nicht in der DB ist\nconst results = [];\nfor (const item of $input.all()) {\n  const link = normalizeUrl(item.json.link || '');\n  if (link && !sentLinks.has(link)) {\n    results.push(item);\n  }\n}\n\n// Wenn nichts Neues da ist, leeres Array zurückgeben\nreturn results.length > 0 ? results : [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        55632,
+        41360
+      ],
+      "id": "8611f59e-be11-4bb4-8e8c-10e0cabd2ee9",
+      "name": "Filter New Only"
+    },
+    {
+      "parameters": {
+        "jsCode": "// URL-Normalisierung: Domain-Aliases auflösen + Tracking-Parameter entfernen\nfunction normalizeUrl(url) {\n  if (!url) return '';\n  try {\n    // HTML-Entities dekodieren (RSS-Parser liefert manchmal &amp; statt &)\n    url = url.replace(/&amp;/g, '&');\n    const u = new URL(url);\n    const domainAliases = {\n      'stefanmaron.onrender.com': 'stefanmaron.com',\n    };\n    const host = u.hostname.toLowerCase();\n    if (domainAliases[host]) {\n      u.hostname = domainAliases[host];\n    }\n    const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];\n    trackingParams.forEach(p => u.searchParams.delete(p));\n    u.hash = '';\n    return u.toString();\n  } catch(e) {\n    return url;\n  }\n}\n\n// Transform Loop-Output zu Posts-Array für die API\n// KW und Jahr werden von PHP anhand des Datums berechnet\nconst articles = $input.all();\n\n// Deduplicate by normalized Link\nconst seen = new Set();\nconst posts = [];\nfor (const item of articles) {\n  const a = item.json;\n  if (a.error) continue; // KI-Parsing fehlgeschlagen\n  const rawLink = a.Link || a.link;\n  const link = normalizeUrl(rawLink);\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n\n  // pubDate aus RSS -> ISO-Datum umwandeln\n  let date = '';\n  if (a.pubDate) {\n    try {\n      date = new Date(a.pubDate).toISOString().split('T')[0];\n    } catch(e) {\n      date = new Date().toISOString().split('T')[0];\n    }\n  } else {\n    date = new Date().toISOString().split('T')[0];\n  }\n\n  posts.push({\n    title: a.Title || a.title,\n    summary: a.Summary || a.summary,\n    source: a.Creator || a.creator || 'Unbekannt',\n    sourceUrl: link,\n    category: a.Category || a.category || 'News',\n    date: date,\n    tags: (a.Tags || a.tags || [a.Category || a.category]).filter(Boolean)\n  });\n}\n\nreturn [{\n  json: {\n    posts: posts\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        56512,
+        41056
+      ],
+      "id": "be0f9074-d292-4d97-bbfd-3b42d8c77957",
+      "name": "Format for API"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bcbeacon.de/api/write.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.posts) }}",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        56784,
+        41056
+      ],
+      "id": "7c675d55-3c40-48ec-af0f-9868677eb359",
+      "name": "Send to API",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7xAg7RMma7Lu4Cma",
+          "name": "BC Beacon API Key"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⚙️ Test Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Categories": {
+      "main": [
+        [
+          {
+            "node": "Fetch Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Tags": {
+      "main": [
+        [
+          {
+            "node": "Get Already Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Already Sent": {
+      "main": [
+        [
+          {
+            "node": "Trigger Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Feeds": {
+      "main": [
+        [
+          {
+            "node": "Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Page Summary Chain": {
+      "main": [
+        [
+          {
+            "node": "Convert to Json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Test Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Format for API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Page Content",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Page Summary Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Json": {
+      "main": [
+        [
+          {
+            "node": "Categorize Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Post": {
+      "main": [
+        [
+          {
+            "node": "Parse Categorization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Categorization": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for API": {
+      "main": [
+        [
+          {
+            "node": "Send to API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Enrich with Source",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich with Source": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Filter New Only",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Only": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feeds": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Page Content": {
+      "main": [
+        [
+          {
+            "node": "Clean HTML Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean HTML Content": {
+      "main": [
+        [
+          {
+            "node": "Check YouTube Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check YouTube Video": {
+      "main": [
+        [
+          {
+            "node": "Needs Transcript?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Transcript?": {
+      "main": [
+        [
+          {
+            "node": "Get transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Process Transcript": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "No Transcript": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get transcript": {
+      "main": [
+        [
+          {
+            "node": "Process Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Test Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Page Summary Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Category Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Categorize Post",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "6fcbfa6a-94c1-441e-a68e-514baf2c22ee",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b269d7837a504b7223899908bc8cb43202782c02a3720e1fbd5b315ff631065e"
+  },
+  "id": "f4W72pdbMf4ueprT",
+  "tags": [
+    {
+      "updatedAt": "2026-01-30T14:15:34.422Z",
+      "createdAt": "2026-01-30T14:15:34.422Z",
+      "id": "Dhqwt6tq7zUfL1OF",
+      "name": "Business Central"
+    },
+    {
+      "updatedAt": "2026-01-30T15:02:42.881Z",
+      "createdAt": "2026-01-30T15:02:42.881Z",
+      "id": "Ojv4wZNvNQOEHo46",
+      "name": "LangChain"
+    },
+    {
+      "updatedAt": "2026-01-30T14:15:34.439Z",
+      "createdAt": "2026-01-30T14:15:34.439Z",
+      "id": "egbtsdST5Syu9InY",
+      "name": "RSS Feed"
+    },
+    {
+      "updatedAt": "2026-01-30T14:15:34.449Z",
+      "createdAt": "2026-01-30T14:15:34.449Z",
+      "id": "h6NrgHHoFV7bsvLb",
+      "name": "Azure OpenAI"
+    }
+  ]
+}

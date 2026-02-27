@@ -15,13 +15,13 @@
         },
         "options": {}
       },
-      "id": "c05db351-b79f-4529-acb9-2a346c603ae5",
+      "id": "bd15051a-20b1-42c9-81e7-f6edf7510562",
       "name": "⚙️ Test Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        48224,
-        35968
+        60800,
+        44928
       ]
     },
     {
@@ -31,13 +31,13 @@
           "timeout": 10000
         }
       },
-      "id": "a1b2c3d4-cats-fetch-node-0001",
+      "id": "fe02fb09-4ac1-44af-922a-700d11f2ef4e",
       "name": "Fetch Categories",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        48400,
-        35968
+        60976,
+        44928
       ]
     },
     {
@@ -47,13 +47,13 @@
           "timeout": 10000
         }
       },
-      "id": "a1b2c3d4-tags-fetch-node-0002",
+      "id": "50587124-4b84-44d7-9c30-d50294ec35c1",
       "name": "Fetch Tags",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        48560,
-        35968
+        61136,
+        44928
       ]
     },
     {
@@ -68,13 +68,13 @@
           ]
         }
       },
-      "id": "ead5f129-45d3-4aaa-9a9e-5d4199a83f8d",
+      "id": "32cf097f-0651-4492-bb0d-ac58a2d62f18",
       "name": "Page Summary Chain",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
-        50912,
-        36240
+        63488,
+        45200
       ],
       "retryOnFail": false,
       "waitBetweenTries": 5000,
@@ -87,10 +87,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        49984,
-        36208
+        62560,
+        45168
       ],
-      "id": "ae710f73-e61d-4cb3-83fe-e11a51cfbf26",
+      "id": "7e26c377-c704-43bd-afb7-5eedbce7dc6a",
       "name": "Loop Over Items"
     },
     {
@@ -98,13 +98,13 @@
         "url": "={{ $json.Feed }}",
         "options": {}
       },
-      "id": "77c715e5-e5d4-43fa-b551-2e72fff7480f",
+      "id": "81053aec-2145-45bd-9d0e-78c49d2ab650",
       "name": "Read RSS Feed",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
       "position": [
-        49152,
-        36352
+        61728,
+        45312
       ],
       "onError": "continueErrorOutput"
     },
@@ -115,10 +115,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        49152,
-        36544
+        61728,
+        45504
       ],
-      "id": "e1f2a3b4-enrich-source-node-0001",
+      "id": "7bcee901-e3f0-48f0-b584-3b62a4547bc6",
       "name": "Enrich with Source"
     },
     {
@@ -126,33 +126,34 @@
         "rule": {
           "interval": [
             {
-              "triggerAtHour": 7
+              "field": "hours",
+              "hoursInterval": 2
             }
           ]
         }
       },
-      "id": "8d58b2ba-6b47-4007-a37a-319b78909fa5",
+      "id": "84590fd9-ee5c-44f7-8479-829e13dca9dd",
       "name": "Start",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        48032,
-        35968
+        60608,
+        44928
       ]
     },
     {
       "parameters": {
-        "content": "## ⚙️ Workflow Konfiguration\n\n**Test Mode (⚙️ Test Config):**\n- `testMode`: true = Test-Modus\n  → Nur an Jan.Neuber@googlemail.com\n  → Already Sent wird ignoriert\n- `testMode`: false = Produktiv\n  → An alle Empfänger\n  → Nur neue Feeds\n\n---\n🏷️ **Tags & Categories (2-Stufen-Ansatz):**\n1. **Page Summary Chain:** Erzeugt nur\n   Title + Summary + Creator (keine\n   Kategorie/Tags).\n2. **Categorize Post:** Dedizierter Node\n   der NUR für Kategorisierung/Tags\n   zuständig ist. Arbeitet auf dem kurzen\n   Summary-Text → bessere Ergebnisse.\n\nVorhandene Tags und Kategorien werden\nper API abgerufen (Fetch Categories +\nFetch Tags). Beide KI-Nodes wählen aus\nder bestehenden Liste.\n\n---\n📹 **YouTube Transkript (Supadata):**\nBei Video-Posts (z.B. hougaard.com) mit\nwenig Text (<500 Zeichen) wird automatisch\ndas YouTube-Transkript via Supadata API\ngeholt. Bei Fehler geht's ohne weiter.\n\n**Supadata Node installieren:**\nSettings → Community Nodes → Install\n→ n8n-nodes-supadata",
-        "height": 580,
+        "content": "## ⚙️ Workflow Konfiguration\n\n**Test Mode (⚙️ Test Config):**\n- `testMode`: true = Test-Modus\n  → Nur an Jan.Neuber@googlemail.com\n  → Already Sent wird ignoriert\n- `testMode`: false = Produktiv\n  → An alle Empfänger\n  → Nur neue Feeds\n\n---\n🔄 **Duplikat-Erkennung (v12):**\nKeine interne n8n-DataTable mehr!\nStattdessen: API-Abfrage an\n`existing_urls.php` (alle URLs).\n→ Robuster: Wenn Send to API fehlschlägt,\n  wird der Post beim nächsten Lauf erneut\n  verarbeitet (kein Datenverlust!).\n→ INSERT IGNORE in write.php verhindert\n  Duplikate in der DB.\n→ Send to API hat Retry (3x, 5s Pause).\n\n---\n🏷️ **Tags & Categories (2-Stufen-Ansatz):**\n1. **Page Summary Chain:** Erzeugt nur\n   Title + Summary + Creator (keine\n   Kategorie/Tags).\n2. **Categorize Post:** Dedizierter Node\n   der NUR für Kategorisierung/Tags\n   zuständig ist. Arbeitet auf dem kurzen\n   Summary-Text → bessere Ergebnisse.\n\nVorhandene Tags und Kategorien werden\nper API abgerufen (Fetch Categories +\nFetch Tags). Beide KI-Nodes wählen aus\nder bestehenden Liste.\n\n---\n📹 **YouTube Transkript (Supadata):**\nBei Video-Posts (z.B. hougaard.com) mit\nwenig Text (<500 Zeichen) wird automatisch\ndas YouTube-Transkript via Supadata API\ngeholt. Bei Fehler geht's ohne weiter.\n\n**Supadata Node installieren:**\nSettings → Community Nodes → Install\n→ n8n-nodes-supadata",
+        "height": 700,
         "width": 480
       },
-      "id": "cd20eca5-c6ea-40e0-8c76-bd6ec227c505",
+      "id": "1201aefb-9105-4247-a74e-fd98bbcf3859",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        48016,
-        35408
+        60608,
+        44128
       ]
     },
     {
@@ -164,10 +165,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        50464,
-        36160
+        63040,
+        45120
       ],
-      "id": "b5a5aff7-6429-4d7a-af9e-254dfdd33a85",
+      "id": "c615e9e3-a2c8-47dc-8baa-d0f0f7c4f046",
       "name": "Merge1"
     },
     {
@@ -182,13 +183,13 @@
           "timeout": 15000
         }
       },
-      "id": "b09f4d2b-7d2f-4569-816a-715817425cf7",
+      "id": "55886e64-52a4-45e6-bccd-ec8d480d1cad",
       "name": "Fetch Page Content",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        50128,
-        36352
+        62704,
+        45312
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -199,13 +200,13 @@
       "parameters": {
         "jsCode": "// Robustes HTML Content Cleanup V2 für Business Central Blogs\n// Optimiert für: waldo.be, demiliani.com, vjeko.com, yzhums.com, hougaard.com, kauffmann.nl, mynavblog.com, katson.com\n// V2: Bessere Extraktion für verschachtelte divs und Elementor-Seiten\n\nfunction cleanHtml(html) {\n  if (!html) return \"\";\n  \n  let content = null;\n  \n  // 1. CONTENT EXTRAKTION - Verbesserte Strategien\n  \n  // Strategie A: entry-content (WordPress) - OHNE schließendes div (wegen Verschachtelung)\n  const entryMatch = html.match(/<div[^>]*class=\"[^\"]*\\bentry-content\\b[^\"]*\"[^>]*>([\\s\\S]+)/i);\n  if (entryMatch) {\n    let inner = entryMatch[1];\n    // Finde natürliches Ende (footer, comments, etc.)\n    const endPatterns = [\n      /<footer\\b/i,\n      /<div[^>]*class=\"[^\"]*\\b(?:comments|comment-respond|related|share-buttons?|author-box|post-navigation|yarpp-related)\\b/i,\n      /<section[^>]*class=\"[^\"]*\\b(?:comments|related)\\b/i,\n      /<!--\\s*[.\\/]entry-content/i,\n      /<\\/article\\s*>/i,\n      /<div[^>]*id=\"comments\"/i\n    ];\n    let endPos = inner.length;\n    for (const pat of endPatterns) {\n      const m = inner.match(pat);\n      if (m && m.index < endPos && m.index > 500) endPos = m.index;\n    }\n    if (endPos > 500) content = inner.substring(0, endPos);\n  }\n  \n  // Strategie B: Elementor - Sammle ALLE widget-container mit Absatz-Content (ZUERST, da vollständiger)\n  if (!content || content.length < 500) {\n    const elementorBlocks = [];\n    const regex = /<div class=\"elementor-widget-container\">([\\s\\S]+?)<\\/div>\\s*<\\/div>/gi;\n    let match;\n    while ((match = regex.exec(html)) !== null) {\n      const block = match[1];\n      // Überspringe Comment-Formulare und Author-Boxen\n      if (block.includes('Leave a Reply') || block.includes('Cancel reply')) continue;\n      // Nur Blöcke mit echtem Textinhalt (<p> Tags und >15 Wörter)\n      if (block.includes('<p') || block.includes('<h')) {\n        const textOnly = block.replace(/<[^>]+>/g, ' ');\n        const words = textOnly.split(/\\s+/).filter(w => w.length > 2).length;\n        if (words > 15) elementorBlocks.push(block);\n      }\n    }\n    if (elementorBlocks.length >= 3) {\n      // Wenn 3+ Blöcke gefunden, ist dies wahrscheinlich Elementor-Content\n      content = elementorBlocks.join('\\n\\n');\n    }\n  }\n  \n  // Strategie B2: Elementor theme-post-content (Fallback für Video-Posts wie hougaard.com)\n  if (!content || content.length < 100) {\n    const themePostMatch = html.match(/data-widget_type=\"theme-post-content[^\"]*\"[^>]*>\\s*<div class=\"elementor-widget-container\">([\\s\\S]+?)<\\/div>\\s*<\\/div>/i);\n    if (themePostMatch && themePostMatch[1].length > 50) {\n      content = themePostMatch[1];\n    }\n  }\n  \n  // Strategie C: article Tag\n  if (!content || content.length < 500) {\n    const articleMatch = html.match(/<article[^>]*>([\\s\\S]+?)<\\/article>/i);\n    if (articleMatch && articleMatch[1].length > (content ? content.length : 0)) {\n      content = articleMatch[1];\n    }\n  }\n  \n  // Strategie D: post-content div (ähnlich wie entry-content)\n  if (!content || content.length < 500) {\n    const postMatch = html.match(/<div[^>]*class=\"[^\"]*\\bpost-content\\b[^\"]*\"[^>]*>([\\s\\S]+)/i);\n    if (postMatch) {\n      let inner = postMatch[1];\n      const endPatterns = [/<footer\\b/i, /<\\/article\\s*>/i, /<div[^>]*class=\"[^\"]*\\bcomments\\b/i];\n      let endPos = Math.min(inner.length, 50000);\n      for (const pat of endPatterns) {\n        const m = inner.match(pat);\n        if (m && m.index < endPos && m.index > 500) endPos = m.index;\n      }\n      if (endPos > (content ? content.length : 0)) content = inner.substring(0, endPos);\n    }\n  }\n  \n  // Strategie E: main Tag\n  if (!content || content.length < 500) {\n    const mainMatch = html.match(/<main[^>]*>([\\s\\S]+?)<\\/main>/i);\n    if (mainMatch && mainMatch[1].length > (content ? content.length : 0)) {\n      content = mainMatch[1];\n    }\n  }\n  \n  // Fallback: Body\n  if (!content || content.length < 300) {\n    const bodyMatch = html.match(/<body[^>]*>([\\s\\S]+?)<\\/body>/i);\n    content = bodyMatch ? bodyMatch[1] : html;\n  }\n  \n  // 2. NOISE ENTFERNUNG - Aggressive Bereinigung\n  const noisePatterns = [\n    // Scripts und Styles\n    /<script[^>]*>[\\s\\S]*?<\\/script>/gi,\n    /<style[^>]*>[\\s\\S]*?<\\/style>/gi,\n    /<noscript[^>]*>[\\s\\S]*?<\\/noscript>/gi,\n    // Strukturelle Elemente\n    /<nav[^>]*>[\\s\\S]*?<\\/nav>/gi,\n    /<footer[^>]*>[\\s\\S]*?<\\/footer>/gi,\n    /<header[^>]*>[\\s\\S]*?<\\/header>/gi,\n    /<aside[^>]*>[\\s\\S]*?<\\/aside>/gi,\n    // Embeds und Forms\n    /<iframe[^>]*>[\\s\\S]*?<\\/iframe>/gi,\n    /<form[^>]*>[\\s\\S]*?<\\/form>/gi,\n    /<svg[^>]*>[\\s\\S]*?<\\/svg>/gi,\n    // Kommentare\n    /<!--[\\s\\S]*?-->/gi,\n    // WordPress-spezifische Noise\n    /<div[^>]*class=\"[^\"]*\\b(?:sharedaddy|share-buttons|social-share|post-ratings|author-box|related-posts|comments-area|newsletter|cookie|popup|modal|sidebar|widget|advertisement|wp-block-embed|jetpack)\\b[^\"]*\"[^>]*>[\\s\\S]*?<\\/div>/gi,\n    // Interaktive Elemente\n    /<(?:button|input|select|textarea)[^>]*\\/?>(?:[\\s\\S]*?<\\/(?:button|select|textarea)>)?/gi,\n    // Bilder mit langen Data-URLs\n    /<img[^>]*src=\"data:[^\"]{100,}\"[^>]*>/gi,\n    // Rating/Vote Widgets\n    /<div[^>]*class=\"[^\"]*\\bpost-ratings\\b[^\"]*\"[^>]*>[\\s\\S]*?<\\/div>/gi\n  ];\n  \n  for (const pattern of noisePatterns) {\n    content = content.replace(pattern, ' ');\n  }\n  \n  // 3. CODE-BLÖCKE BEWAHREN\n  const codeBlocks = [];\n  content = content.replace(/<pre[^>]*>([\\s\\S]*?)<\\/pre>/gi, (match, code) => {\n    const cleanCode = code.replace(/<[^>]+>/g, '').trim();\n    if (cleanCode.length > 10) {\n      codeBlocks.push(cleanCode);\n      return `\\n\\n[CODE_BLOCK_${codeBlocks.length - 1}]\\n\\n`;\n    }\n    return '';\n  });\n  \n  // 4. STRUKTUR IN TEXT UMWANDELN\n  // Überschriften\n  content = content.replace(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/gi, '\\n\\n# $1\\n');\n  content = content.replace(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/gi, '\\n\\n## $1\\n');\n  content = content.replace(/<h3[^>]*>([\\s\\S]*?)<\\/h3>/gi, '\\n\\n### $1\\n');\n  content = content.replace(/<h[4-6][^>]*>([\\s\\S]*?)<\\/h[4-6]>/gi, '\\n\\n#### $1\\n');\n  // Paragraphen und Breaks\n  content = content.replace(/<\\/p>/gi, '\\n\\n');\n  content = content.replace(/<br\\s*\\/?>/gi, '\\n');\n  // Listen\n  content = content.replace(/<li[^>]*>/gi, '\\n• ');\n  content = content.replace(/<\\/li>/gi, '');\n  // Hervorhebungen (optional behalten)\n  content = content.replace(/<strong[^>]*>([\\s\\S]*?)<\\/strong>/gi, '**$1**');\n  content = content.replace(/<b>([\\s\\S]*?)<\\/b>/gi, '**$1**');\n  content = content.replace(/<em[^>]*>([\\s\\S]*?)<\\/em>/gi, '_$1_');\n  content = content.replace(/<code[^>]*>([\\s\\S]*?)<\\/code>/gi, '`$1`');\n  // Links - nur Text behalten\n  content = content.replace(/<a[^>]*>([\\s\\S]*?)<\\/a>/gi, '$1');\n  \n  // 5. ALLE ÜBRIGEN TAGS ENTFERNEN\n  content = content.replace(/<[^>]+>/g, ' ');\n  \n  // 6. HTML-ENTITIES DECODIEREN\n  const entities = {\n    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '\"',\n    '&#39;': \"'\", '&apos;': \"'\", '&nbsp;': ' ',\n    '&mdash;': '—', '&ndash;': '–', '&hellip;': '…',\n    '&copy;': '©', '&reg;': '®', '&trade;': '™',\n    '&euro;': '€', '&pound;': '£', '&yen;': '¥',\n    '&laquo;': '«', '&raquo;': '»', '&bull;': '•'\n  };\n  for (const [entity, char] of Object.entries(entities)) {\n    content = content.replace(new RegExp(entity, 'gi'), char);\n  }\n  // Numerische Entities\n  content = content.replace(/&#(\\d+);/g, (m, n) => {\n    try { return String.fromCharCode(parseInt(n)); } catch(e) { return ''; }\n  });\n  content = content.replace(/&#x([0-9a-f]+);/gi, (m, n) => {\n    try { return String.fromCharCode(parseInt(n, 16)); } catch(e) { return ''; }\n  });\n  \n  // 7. CODE-BLÖCKE WIEDERHERSTELLEN\n  for (let i = 0; i < codeBlocks.length; i++) {\n    content = content.replace(`[CODE_BLOCK_${i}]`, `\\n\\`\\`\\`\\n${codeBlocks[i]}\\n\\`\\`\\`\\n`);\n  }\n  \n  // 8. WHITESPACE NORMALISIEREN\n  content = content.replace(/[ \\t]+/g, ' ');\n  content = content.replace(/\\n[ \\t]+/g, '\\n');\n  content = content.replace(/[ \\t]+\\n/g, '\\n');\n  content = content.replace(/\\n{3,}/g, '\\n\\n');\n  content = content.trim();\n  \n  // 9. INTELLIGENTES ABSCHNEIDEN bei 8000 Zeichen\n  const maxLen = 8000;\n  if (content.length > maxLen) {\n    content = content.substring(0, maxLen);\n    // Schneide am Satzende oder Absatz ab\n    const lastPeriod = content.lastIndexOf('. ');\n    const lastNewline = content.lastIndexOf('\\n\\n');\n    const cutPos = Math.max(lastPeriod, lastNewline);\n    if (cutPos > maxLen * 0.75) {\n      content = content.substring(0, cutPos + 1);\n    }\n  }\n  \n  return content;\n}\n\nconst input = $input.first();\nconst htmlContent = input.json.data || input.json.body || '';\nconst cleanContent = cleanHtml(htmlContent);\n\nreturn [{\n  json: {\n    ...input.json,\n    data: cleanContent\n  }\n}];"
       },
-      "id": "d93d1b9c-8d44-4a8f-9b36-ce7fe292723b",
+      "id": "dacceda8-a41b-449b-a18e-955e640ce9fc",
       "name": "Clean HTML Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        50304,
-        36352
+        62880,
+        45312
       ]
     },
     {
@@ -215,10 +216,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        51248,
-        36432
+        63856,
+        45200
       ],
-      "id": "336edc74-9543-4f85-914b-5930eb260d8c",
+      "id": "3988ec8f-5496-4d44-8e3f-94cdccace0ab",
       "name": "Convert to Json"
     },
     {
@@ -233,13 +234,13 @@
           ]
         }
       },
-      "id": "b7c4e2a1-cat-node-dedicated-0001",
+      "id": "d3e37ad4-430b-4e2b-bef5-8661450c5278",
       "name": "Categorize Post",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
       "position": [
-        51584,
-        36432
+        64112,
+        45200
       ],
       "retryOnFail": true,
       "waitBetweenTries": 3000,
@@ -256,10 +257,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        51584,
-        36640
+        64112,
+        45392
       ],
-      "id": "c3d5e7f9-cat-model-node-0001",
+      "id": "bbf3f933-759a-4f4b-9a9f-e27934db2b54",
       "name": "OpenRouter Category Model",
       "credentials": {
         "openRouterApi": {
@@ -275,10 +276,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        51920,
-        36432
+        64496,
+        45392
       ],
-      "id": "a8b6c4d2-parse-cat-node-0001",
+      "id": "7d59e992-c836-4f36-9b51-95ec8ec0c550",
       "name": "Parse Categorization"
     },
     {
@@ -288,10 +289,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        48912,
-        36208
+        61488,
+        45168
       ],
-      "id": "f394300a-8272-4e65-9b4b-8792a6ee512d",
+      "id": "152c4b1a-5cc2-4393-ad3f-c584c776ab36",
       "name": "Loop Over Items1"
     },
     {
@@ -308,23 +309,23 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        48720,
-        36208
+        61296,
+        45168
       ],
-      "id": "dd72cdf3-790b-4956-969c-8c1066efcb5e",
+      "id": "2315804d-a0dd-4596-9834-bbd0dbd71b07",
       "name": "Feeds"
     },
     {
       "parameters": {
         "jsCode": "// Prüfe ob YouTube-Video vorhanden und wenig Content\n// Falls ja, extrahiere Video-ID für Transkript-Abruf\n\nconst input = $input.first();\nconst content = input.json.data || '';\nconst htmlContent = $('Fetch Page Content').item.json.data || '';\n\n// Suche nach YouTube-URLs in Content oder Original-HTML\nconst patterns = [\n  /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})/,\n  /youtube\\.com\\/watch\\?[^\"']*v=([a-zA-Z0-9_-]{11})/\n];\n\nlet videoId = null;\nfor (const pattern of patterns) {\n  const match = (content + htmlContent).match(pattern);\n  if (match) {\n    videoId = match[1];\n    break;\n  }\n}\n\n// Nur Transkript holen wenn: wenig Content (<500 Zeichen) UND YouTube-Video gefunden\nconst needsTranscript = content.length < 500 && videoId !== null;\n\nreturn [{\n  json: {\n    ...input.json,\n    youtubeVideoId: videoId,\n    needsTranscript: needsTranscript\n  }\n}];"
       },
-      "id": "3be318d9-0c70-477a-af1b-249cd54e452f",
+      "id": "1950865b-67bc-4be4-8104-e2b8cd716d7a",
       "name": "Check YouTube Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        50496,
-        36352
+        63072,
+        45312
       ]
     },
     {
@@ -351,39 +352,39 @@
         },
         "options": {}
       },
-      "id": "fa033fa9-fff0-431b-ad62-ae3d0d0f0813",
+      "id": "cef3f676-f5b9-4993-9f46-68535939f601",
       "name": "Needs Transcript?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        50656,
-        36352
+        63232,
+        45312
       ]
     },
     {
       "parameters": {
         "jsCode": "// Verarbeite Supadata Transcript-Response\nconst input = $input.first();\nconst originalData = $('Check YouTube Video').item.json;\n\nlet transcript = '';\n\ntry {\n  // Supadata gibt content als Array von {text, offset, duration} zurück\n  const content = input.json.content || [];\n  \n  if (Array.isArray(content)) {\n    transcript = content\n      .map(segment => segment.text || '')\n      .filter(t => t && t.trim())\n      .join(' ')\n      .replace(/\\s+/g, ' ')\n      .trim();\n  } else if (typeof content === 'string') {\n    transcript = content;\n  }\n} catch (e) {\n  transcript = '';\n}\n\n// Kombiniere Original-Content mit Transkript\nlet finalContent = originalData.data || '';\n\nif (transcript && transcript.length > 100) {\n  finalContent = finalContent + '\\n\\n---\\n\\n## 📹 Video Transcript\\n\\n' + transcript;\n}\n\nreturn [{\n  json: {\n    ...originalData,\n    data: finalContent,\n    hasTranscript: transcript.length > 100,\n    transcriptLength: transcript.length\n  }\n}];"
       },
-      "id": "a234d85e-8fc4-4b4c-b136-157eb83e8b7e",
+      "id": "e62cd175-3f6a-4f90-b152-40720ee26fca",
       "name": "Process Transcript",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        51296,
-        36720
+        63872,
+        45680
       ]
     },
     {
       "parameters": {
         "jsCode": "// Kein Transcript verfügbar - Original-Daten zurückgeben\nconst input = $input.first();\n\nreturn [{\n  json: {\n    ...input.json,\n    hasTranscript: false\n  }\n}];"
       },
-      "id": "193fedd2-3469-4c04-9adc-aa177eb689fd",
+      "id": "52796483-098c-4160-96cf-b39df5640f6c",
       "name": "No Transcript",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        51072,
-        37008
+        63648,
+        45968
       ]
     },
     {
@@ -394,10 +395,10 @@
       "type": "n8n-nodes-supadata.supadata",
       "typeVersion": 1,
       "position": [
-        50896,
-        36736
+        63472,
+        45696
       ],
-      "id": "c8e73c36-434c-4393-b338-574c97f4f6de",
+      "id": "d345425e-1b92-45bb-9356-9c322d8818e3",
       "name": "Get transcript",
       "credentials": {
         "supadataApi": {
@@ -413,10 +414,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        48032,
-        36160
+        60608,
+        45120
       ],
-      "id": "8eee693a-b07d-462f-93f3-c85d940052c3",
+      "id": "cc360fc8-8d3b-4b16-b021-d01b5e001cde",
       "name": "When clicking ‘Execute workflow’"
     },
     {
@@ -427,10 +428,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        50912,
-        36448
+        63488,
+        45408
       ],
-      "id": "ab607208-089e-41f1-b445-0ef70eb6a4ad",
+      "id": "98710337-0147-44dd-9361-44acba15561a",
       "name": "OpenRouter Chat Model",
       "credentials": {
         "openRouterApi": {
@@ -441,68 +442,31 @@
     },
     {
       "parameters": {
-        "dataTableId": {
-          "__rl": true,
-          "value": "gAwWQOSf1YcOgzoj",
-          "mode": "list",
-          "cachedResultName": "AlreadySent",
-          "cachedResultUrl": "/projects/aE1YX2ZiBQXD4ij4/datatables/gAwWQOSf1YcOgzoj"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "link": "={{ $json.link }}"
-          },
-          "matchingColumns": [
-            "Address"
-          ],
-          "schema": [
-            {
-              "id": "link",
-              "displayName": "link",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
+        "url": "https://bcbeacon.de/api/existing_urls.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
       },
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        49456,
-        36368
+        60976,
+        45168
       ],
-      "id": "da4188a4-17c5-455d-a343-706f8b42794a",
-      "name": "Insert row"
-    },
-    {
-      "parameters": {
-        "operation": "get",
-        "dataTableId": {
-          "__rl": true,
-          "value": "gAwWQOSf1YcOgzoj",
-          "mode": "list",
-          "cachedResultName": "AlreadySent",
-          "cachedResultUrl": "/projects/aE1YX2ZiBQXD4ij4/datatables/gAwWQOSf1YcOgzoj"
-        },
-        "returnAll": true
-      },
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1,
-      "position": [
-        48400,
-        36208
-      ],
-      "id": "cfb849d5-fdd9-48be-81b3-62084cc8551a",
+      "id": "2b6d3b54-2ba2-4ced-8957-76168f2bcfc8",
       "name": "Get Already Sent",
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7xAg7RMma7Lu4Cma",
+          "name": "BC Beacon API Key"
+        }
+      }
     },
     {
       "parameters": {
@@ -511,36 +475,36 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        48560,
-        36208
+        61136,
+        45168
       ],
-      "id": "10ab51f1-0ab0-42a7-8244-338323c58e35",
+      "id": "99699d18-4b7c-4b98-88b9-6b68a1950625",
       "name": "Trigger Feeds"
     },
     {
       "parameters": {
-        "jsCode": "// Bereits verarbeitete Links aus AlreadySent laden\nlet sentRows = [];\ntry {\n  sentRows = $('Get Already Sent').all();\n} catch(e) {\n  // Leere Tabelle - keine Einträge vorhanden\n  sentRows = [];\n}\nconst sentLinks = new Set(sentRows.map(r => r.json.link).filter(Boolean));\n\n// Nur Items behalten deren Link noch nicht verarbeitet wurde\nconst results = [];\nfor (const item of $input.all()) {\n  const link = item.json.link || '';\n  if (link && !sentLinks.has(link)) {\n    results.push(item);\n  }\n}\n\n// Wenn nichts Neues da ist, leeres Array zurückgeben\nreturn results.length > 0 ? results : [];"
+        "jsCode": "// URL-Normalisierung (Regex-basiert, keine URL-Klasse noetig)\nfunction normalizeUrl(url) {\n  if (!url) return '';\n  // 1. HTML-Entities dekodieren (RSS-Parser liefert manchmal &amp; statt &)\n  url = url.replace(/&amp;/g, '&');\n  // 2. Domain-Aliases aufloesen\n  const domainAliases = { 'stefanmaron.onrender.com': 'stefanmaron.com' };\n  for (const [alias, canonical] of Object.entries(domainAliases)) {\n    url = url.replace(alias, canonical);\n  }\n  // 3. Fragment/Hash entfernen\n  url = url.replace(/#.*$/, '');\n  // 4. UTM-Tracking-Parameter entfernen\n  url = url.replace(/[?&]utm_[a-z_]+=[^&]*/gi, '');\n  // 5. Verwaistes ? oder & am Ende bereinigen\n  url = url.replace(/[?&]$/, '');\n  // 6. Falls erstes & uebrig ist, zu ? machen\n  url = url.replace(/\\?&/, '?');\n  return url;\n}\n\n// Bereits gespeicherte URLs aus der Datenbank laden (via API)\nlet existingUrls = [];\ntry {\n  const apiResponse = $('Get Already Sent').first();\n  existingUrls = apiResponse.json.urls || [];\n} catch(e) {\n  // API nicht erreichbar - sicherheitshalber nichts filtern\n  // (Duplikate werden von INSERT IGNORE in write.php abgefangen)\n  existingUrls = [];\n}\n// Normalisierte DB-URLs fuer den Vergleich\nconst sentLinks = new Set(existingUrls.map(normalizeUrl));\n\n// Nur Items behalten deren Link noch nicht in der DB ist\nconst results = [];\nfor (const item of $input.all()) {\n  const link = normalizeUrl(item.json.link || '');\n  if (link && !sentLinks.has(link)) {\n    results.push(item);\n  }\n}\n\n// Wenn nichts Neues da ist, leeres Array zurueckgeben\nreturn results.length > 0 ? results : [];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        49456,
-        36192
+        62032,
+        45152
       ],
-      "id": "128d08f4-1592-411f-91a0-dca786807a9c",
+      "id": "e3959094-9b04-491a-9efd-e703b1ecb721",
       "name": "Filter New Only"
     },
     {
       "parameters": {
-        "jsCode": "// Transform Loop-Output zu Posts-Array für die API\n// KW und Jahr werden von PHP anhand des Datums berechnet\nconst articles = $input.all();\n\n// Deduplicate by Link\nconst seen = new Set();\nconst posts = [];\nfor (const item of articles) {\n  const a = item.json;\n  if (a.error) continue; // KI-Parsing fehlgeschlagen\n  const link = a.Link || a.link;\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n\n  // pubDate aus RSS -> ISO-Datum umwandeln\n  let date = '';\n  if (a.pubDate) {\n    try {\n      date = new Date(a.pubDate).toISOString().split('T')[0];\n    } catch(e) {\n      date = new Date().toISOString().split('T')[0];\n    }\n  } else {\n    date = new Date().toISOString().split('T')[0];\n  }\n\n  posts.push({\n    title: a.Title || a.title,\n    summary: a.Summary || a.summary,\n    source: a.Creator || a.creator || 'Unbekannt',\n    sourceUrl: link,\n    category: a.Category || a.category || 'News',\n    date: date,\n    tags: (a.Tags || a.tags || [a.Category || a.category]).filter(Boolean)\n  });\n}\n\nreturn [{\n  json: {\n    posts: posts\n  }\n}];"
+        "jsCode": "// URL-Normalisierung (Regex-basiert, keine URL-Klasse noetig)\nfunction normalizeUrl(url) {\n  if (!url) return '';\n  // 1. HTML-Entities dekodieren (RSS-Parser liefert manchmal &amp; statt &)\n  url = url.replace(/&amp;/g, '&');\n  // 2. Domain-Aliases aufloesen\n  const domainAliases = { 'stefanmaron.onrender.com': 'stefanmaron.com' };\n  for (const [alias, canonical] of Object.entries(domainAliases)) {\n    url = url.replace(alias, canonical);\n  }\n  // 3. Fragment/Hash entfernen\n  url = url.replace(/#.*$/, '');\n  // 4. UTM-Tracking-Parameter entfernen\n  url = url.replace(/[?&]utm_[a-z_]+=[^&]*/gi, '');\n  // 5. Verwaistes ? oder & am Ende bereinigen\n  url = url.replace(/[?&]$/, '');\n  // 6. Falls erstes & uebrig ist, zu ? machen\n  url = url.replace(/\\?&/, '?');\n  return url;\n}\n\n// Transform Loop-Output zu Posts-Array für die API\n// KW und Jahr werden von PHP anhand des Datums berechnet\nconst articles = $input.all();\n\n// Deduplicate by normalized Link\nconst seen = new Set();\nconst posts = [];\nfor (const item of articles) {\n  const a = item.json;\n  if (a.error) continue; // KI-Parsing fehlgeschlagen\n  const rawLink = a.Link || a.link;\n  const link = normalizeUrl(rawLink);\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n\n  // pubDate aus RSS -> ISO-Datum umwandeln\n  let date = '';\n  if (a.pubDate) {\n    try {\n      date = new Date(a.pubDate).toISOString().split('T')[0];\n    } catch(e) {\n      date = new Date().toISOString().split('T')[0];\n    }\n  } else {\n    date = new Date().toISOString().split('T')[0];\n  }\n\n  posts.push({\n    title: a.Title || a.title,\n    summary: a.Summary || a.summary,\n    source: a.Creator || a.creator || 'Unbekannt',\n    sourceUrl: link,\n    category: a.Category || a.category || 'News',\n    date: date,\n    tags: (a.Tags || a.tags || [a.Category || a.category]).filter(Boolean)\n  });\n}\n\nreturn [{\n  json: {\n    posts: posts\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        50336,
-        35888
+        62912,
+        44848
       ],
-      "id": "0ad7c9fc-e478-40af-8934-3a850ee8bffc",
+      "id": "23e0b5b6-5549-4505-89fb-8ac36a3c2c90",
       "name": "Format for API"
     },
     {
@@ -560,14 +524,22 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        50608,
-        35888
+        63184,
+        44848
       ],
-      "id": "2af5e95b-f059-4ea2-aa83-1bddf2d6446f",
-      "name": "Send to API"
+      "id": "2f2371eb-2266-4977-90fb-28c5685ae08e",
+      "name": "Send to API",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7xAg7RMma7Lu4Cma",
+          "name": "BC Beacon API Key"
+        }
+      }
     }
   ],
-  "pinData": {},
   "connections": {
     "⚙️ Test Config": {
       "main": [
@@ -778,11 +750,6 @@
             "node": "Loop Over Items",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Insert row",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -931,7 +898,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "c04b1f77-9488-4ab8-ba51-d371227e241e",
+  "versionId": "524b0c58-34b4-4d4c-b489-13e5c1f60e97",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "b269d7837a504b7223899908bc8cb43202782c02a3720e1fbd5b315ff631065e"

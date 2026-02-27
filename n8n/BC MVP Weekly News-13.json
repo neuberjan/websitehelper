@@ -1,0 +1,1310 @@
+{
+  "name": "BC MVP Weekly News",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "test-mode-toggle",
+              "name": "testMode",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "99910b00-0985-4ac0-8f5f-ea546b299fbf",
+      "name": "⚙️ Test Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        52912,
+        39792
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://bcbeacon.de/api/categories.php",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "f2becab7-45b7-4c44-a337-1ca71c6a6528",
+      "name": "Fetch Categories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        53088,
+        39792
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://bcbeacon.de/api/tags.php",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "576a8106-c42f-4028-b4a3-321504e3d71f",
+      "name": "Fetch Tags",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        53248,
+        39792
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Fasse diesen Business Central Artikel auf Deutsch zusammen. ALLE Texte müssen auf Deutsch sein, auch der Titel!\\n\\nKategorisierung und Tags werden in einem separaten Schritt zugewiesen – gib hier KEINE Category oder Tags aus.\\n\\n## Artikel\\n- Originaltitel: ' + $json.title + '\\n- Autor: ' + ($json.creator || $json['dc:creator'] || $json.feedAuthor || 'Unbekannt') + '\\n- Quelle: ' + ($json.feedAuthor || 'Unbekannt') + '\\n- URL: ' + $json.link + '\\n- Veröffentlicht: ' + ($json.pubDate || '').substring(0, 16) + '\\n- Typ: ' + ($json.hasTranscript ? 'Video-Transkript' : 'Blogbeitrag') + '\\n\\n## Inhalt:\\n' + ($json.data || '').substring(0, 10000) + '\\n\\n## Ausgabe als JSON (kein Markdown):\\n{\\n  \"Title\": \"<Deutscher Titel – übersetze den Originaltitel sinngemäß ins Deutsche>\",\\n  \"Link\": \"' + $json.link + '\",\\n  \"Summary\": \"<2-3 Sätze auf Deutsch: wichtigste technische Erkenntnis für BC-Entwickler>\",\\n  \"Creator\": \"' + ($json.creator || $json['dc:creator'] || $json.feedAuthor || 'Unbekannt') + '\"\\n}' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Du bist ein technischer Redakteur für Business Central. ALLE Ausgaben müssen auf Deutsch sein – insbesondere auch der Title! Übersetze englische Titel sinngemäß ins Deutsche (z.B. 'How to Debug AL Code' → 'So debuggen Sie AL-Code'). Fachbegriffe wie 'Business Central', 'AL', 'API', 'Docker' etc. dürfen englisch bleiben. Fasse Artikel in 2-3 Sätzen auf Deutsch zusammen, mit Fokus auf die wichtigste technische Erkenntnis. Bei Video-Transkripten extrahiere die Kernaussage und ignoriere Füllwörter. Gib NUR valides JSON mit der exakt gezeigten Struktur zurück (Title, Link, Summary, Creator – KEINE Category oder Tags). Verwende die vorgegebenen Link- und Creator-Werte unverändert."
+            }
+          ]
+        }
+      },
+      "id": "7001ccd7-a7db-445f-9bc3-4df3dd230a68",
+      "name": "Page Summary Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        55600,
+        40064
+      ],
+      "retryOnFail": false,
+      "waitBetweenTries": 5000,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        54672,
+        40032
+      ],
+      "id": "f555eb5f-cb09-4b80-877f-8682cb14bd12",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.Feed }}",
+        "options": {}
+      },
+      "id": "c40aaedd-7339-449e-bbf0-9f281170332a",
+      "name": "Read RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        53840,
+        40176
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Author aus der Data Table an jedes RSS-Item anhängen\nconst feedAuthor = $('Loop Over Items1').first().json.Author || '';\nconst items = $input.all();\nreturn items.map(item => ({\n  json: {\n    ...item.json,\n    feedAuthor: feedAuthor\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        53840,
+        40368
+      ],
+      "id": "cbc47c20-bc80-4ed1-a772-85101d7ca794",
+      "name": "Enrich with Source"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "689dad7f-f6d1-4d65-b87f-909fed7098de",
+      "name": "Start",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        52720,
+        39792
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Workflow Konfiguration\n\n**Test Mode (⚙️ Test Config):**\n- `testMode`: true = Test-Modus\n  → Nur an Jan.Neuber@googlemail.com\n  → Already Sent wird ignoriert\n- `testMode`: false = Produktiv\n  → An alle Empfänger\n  → Nur neue Feeds\n\n---\n🔄 **Duplikat-Erkennung (v12):**\nKeine interne n8n-DataTable mehr!\nStattdessen: API-Abfrage an\n`existing_urls.php` (alle URLs).\n→ Robuster: Wenn Send to API fehlschlägt,\n  wird der Post beim nächsten Lauf erneut\n  verarbeitet (kein Datenverlust!).\n→ INSERT IGNORE in write.php verhindert\n  Duplikate in der DB.\n→ Send to API hat Retry (3x, 5s Pause).\n\n---\n🏷️ **Tags & Categories (2-Stufen-Ansatz):**\n1. **Page Summary Chain:** Erzeugt nur\n   Title + Summary + Creator (keine\n   Kategorie/Tags).\n2. **Categorize Post:** Dedizierter Node\n   der NUR für Kategorisierung/Tags\n   zuständig ist. Arbeitet auf dem kurzen\n   Summary-Text → bessere Ergebnisse.\n\nVorhandene Tags und Kategorien werden\nper API abgerufen (Fetch Categories +\nFetch Tags). Beide KI-Nodes wählen aus\nder bestehenden Liste.\n\n---\n📹 **YouTube Transkript (Supadata):**\nBei Video-Posts (z.B. hougaard.com) mit\nwenig Text (<500 Zeichen) wird automatisch\ndas YouTube-Transkript via Supadata API\ngeholt. Bei Fehler geht's ohne weiter.\n\n**Supadata Node installieren:**\nSettings → Community Nodes → Install\n→ n8n-nodes-supadata",
+        "height": 700,
+        "width": 480
+      },
+      "id": "b00cb1b4-d25a-43c9-bb7c-631197024c6f",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        52720,
+        38992
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        55152,
+        39984
+      ],
+      "id": "856b290d-e44a-4692-96a6-ba5c3db97d07",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "856e0622-0181-4937-8692-260791f2a6ae",
+      "name": "Fetch Page Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        54816,
+        40176
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Robustes HTML Content Cleanup V2 für Business Central Blogs\n// Optimiert für: waldo.be, demiliani.com, vjeko.com, yzhums.com, hougaard.com, kauffmann.nl, mynavblog.com, katson.com\n// V2: Bessere Extraktion für verschachtelte divs und Elementor-Seiten\n\nfunction cleanHtml(html) {\n  if (!html) return \"\";\n  \n  let content = null;\n  \n  // 1. CONTENT EXTRAKTION - Verbesserte Strategien\n  \n  // Strategie A: entry-content (WordPress) - OHNE schließendes div (wegen Verschachtelung)\n  const entryMatch = html.match(/<div[^>]*class=\"[^\"]*\\bentry-content\\b[^\"]*\"[^>]*>([\\s\\S]+)/i);\n  if (entryMatch) {\n    let inner = entryMatch[1];\n    // Finde natürliches Ende (footer, comments, etc.)\n    const endPatterns = [\n      /<footer\\b/i,\n      /<div[^>]*class=\"[^\"]*\\b(?:comments|comment-respond|related|share-buttons?|author-box|post-navigation|yarpp-related)\\b/i,\n      /<section[^>]*class=\"[^\"]*\\b(?:comments|related)\\b/i,\n      /<!--\\s*[.\\/]entry-content/i,\n      /<\\/article\\s*>/i,\n      /<div[^>]*id=\"comments\"/i\n    ];\n    let endPos = inner.length;\n    for (const pat of endPatterns) {\n      const m = inner.match(pat);\n      if (m && m.index < endPos && m.index > 500) endPos = m.index;\n    }\n    if (endPos > 500) content = inner.substring(0, endPos);\n  }\n  \n  // Strategie B: Elementor - Sammle ALLE widget-container mit Absatz-Content (ZUERST, da vollständiger)\n  if (!content || content.length < 500) {\n    const elementorBlocks = [];\n    const regex = /<div class=\"elementor-widget-container\">([\\s\\S]+?)<\\/div>\\s*<\\/div>/gi;\n    let match;\n    while ((match = regex.exec(html)) !== null) {\n      const block = match[1];\n      // Überspringe Comment-Formulare und Author-Boxen\n      if (block.includes('Leave a Reply') || block.includes('Cancel reply')) continue;\n      // Nur Blöcke mit echtem Textinhalt (<p> Tags und >15 Wörter)\n      if (block.includes('<p') || block.includes('<h')) {\n        const textOnly = block.replace(/<[^>]+>/g, ' ');\n        const words = textOnly.split(/\\s+/).filter(w => w.length > 2).length;\n        if (words > 15) elementorBlocks.push(block);\n      }\n    }\n    if (elementorBlocks.length >= 3) {\n      // Wenn 3+ Blöcke gefunden, ist dies wahrscheinlich Elementor-Content\n      content = elementorBlocks.join('\\n\\n');\n    }\n  }\n  \n  // Strategie B2: Elementor theme-post-content (Fallback für Video-Posts wie hougaard.com)\n  if (!content || content.length < 100) {\n    const themePostMatch = html.match(/data-widget_type=\"theme-post-content[^\"]*\"[^>]*>\\s*<div class=\"elementor-widget-container\">([\\s\\S]+?)<\\/div>\\s*<\\/div>/i);\n    if (themePostMatch && themePostMatch[1].length > 50) {\n      content = themePostMatch[1];\n    }\n  }\n  \n  // Strategie C: article Tag\n  if (!content || content.length < 500) {\n    const articleMatch = html.match(/<article[^>]*>([\\s\\S]+?)<\\/article>/i);\n    if (articleMatch && articleMatch[1].length > (content ? content.length : 0)) {\n      content = articleMatch[1];\n    }\n  }\n  \n  // Strategie D: post-content div (ähnlich wie entry-content)\n  if (!content || content.length < 500) {\n    const postMatch = html.match(/<div[^>]*class=\"[^\"]*\\bpost-content\\b[^\"]*\"[^>]*>([\\s\\S]+)/i);\n    if (postMatch) {\n      let inner = postMatch[1];\n      const endPatterns = [/<footer\\b/i, /<\\/article\\s*>/i, /<div[^>]*class=\"[^\"]*\\bcomments\\b/i];\n      let endPos = Math.min(inner.length, 50000);\n      for (const pat of endPatterns) {\n        const m = inner.match(pat);\n        if (m && m.index < endPos && m.index > 500) endPos = m.index;\n      }\n      if (endPos > (content ? content.length : 0)) content = inner.substring(0, endPos);\n    }\n  }\n  \n  // Strategie E: main Tag\n  if (!content || content.length < 500) {\n    const mainMatch = html.match(/<main[^>]*>([\\s\\S]+?)<\\/main>/i);\n    if (mainMatch && mainMatch[1].length > (content ? content.length : 0)) {\n      content = mainMatch[1];\n    }\n  }\n  \n  // Fallback: Body\n  if (!content || content.length < 300) {\n    const bodyMatch = html.match(/<body[^>]*>([\\s\\S]+?)<\\/body>/i);\n    content = bodyMatch ? bodyMatch[1] : html;\n  }\n  \n  // 2. NOISE ENTFERNUNG - Aggressive Bereinigung\n  const noisePatterns = [\n    // Scripts und Styles\n    /<script[^>]*>[\\s\\S]*?<\\/script>/gi,\n    /<style[^>]*>[\\s\\S]*?<\\/style>/gi,\n    /<noscript[^>]*>[\\s\\S]*?<\\/noscript>/gi,\n    // Strukturelle Elemente\n    /<nav[^>]*>[\\s\\S]*?<\\/nav>/gi,\n    /<footer[^>]*>[\\s\\S]*?<\\/footer>/gi,\n    /<header[^>]*>[\\s\\S]*?<\\/header>/gi,\n    /<aside[^>]*>[\\s\\S]*?<\\/aside>/gi,\n    // Embeds und Forms\n    /<iframe[^>]*>[\\s\\S]*?<\\/iframe>/gi,\n    /<form[^>]*>[\\s\\S]*?<\\/form>/gi,\n    /<svg[^>]*>[\\s\\S]*?<\\/svg>/gi,\n    // Kommentare\n    /<!--[\\s\\S]*?-->/gi,\n    // WordPress-spezifische Noise\n    /<div[^>]*class=\"[^\"]*\\b(?:sharedaddy|share-buttons|social-share|post-ratings|author-box|related-posts|comments-area|newsletter|cookie|popup|modal|sidebar|widget|advertisement|wp-block-embed|jetpack)\\b[^\"]*\"[^>]*>[\\s\\S]*?<\\/div>/gi,\n    // Interaktive Elemente\n    /<(?:button|input|select|textarea)[^>]*\\/?>(?:[\\s\\S]*?<\\/(?:button|select|textarea)>)?/gi,\n    // Bilder mit langen Data-URLs\n    /<img[^>]*src=\"data:[^\"]{100,}\"[^>]*>/gi,\n    // Rating/Vote Widgets\n    /<div[^>]*class=\"[^\"]*\\bpost-ratings\\b[^\"]*\"[^>]*>[\\s\\S]*?<\\/div>/gi\n  ];\n  \n  for (const pattern of noisePatterns) {\n    content = content.replace(pattern, ' ');\n  }\n  \n  // 3. CODE-BLÖCKE BEWAHREN\n  const codeBlocks = [];\n  content = content.replace(/<pre[^>]*>([\\s\\S]*?)<\\/pre>/gi, (match, code) => {\n    const cleanCode = code.replace(/<[^>]+>/g, '').trim();\n    if (cleanCode.length > 10) {\n      codeBlocks.push(cleanCode);\n      return `\\n\\n[CODE_BLOCK_${codeBlocks.length - 1}]\\n\\n`;\n    }\n    return '';\n  });\n  \n  // 4. STRUKTUR IN TEXT UMWANDELN\n  // Überschriften\n  content = content.replace(/<h1[^>]*>([\\s\\S]*?)<\\/h1>/gi, '\\n\\n# $1\\n');\n  content = content.replace(/<h2[^>]*>([\\s\\S]*?)<\\/h2>/gi, '\\n\\n## $1\\n');\n  content = content.replace(/<h3[^>]*>([\\s\\S]*?)<\\/h3>/gi, '\\n\\n### $1\\n');\n  content = content.replace(/<h[4-6][^>]*>([\\s\\S]*?)<\\/h[4-6]>/gi, '\\n\\n#### $1\\n');\n  // Paragraphen und Breaks\n  content = content.replace(/<\\/p>/gi, '\\n\\n');\n  content = content.replace(/<br\\s*\\/?>/gi, '\\n');\n  // Listen\n  content = content.replace(/<li[^>]*>/gi, '\\n• ');\n  content = content.replace(/<\\/li>/gi, '');\n  // Hervorhebungen (optional behalten)\n  content = content.replace(/<strong[^>]*>([\\s\\S]*?)<\\/strong>/gi, '**$1**');\n  content = content.replace(/<b>([\\s\\S]*?)<\\/b>/gi, '**$1**');\n  content = content.replace(/<em[^>]*>([\\s\\S]*?)<\\/em>/gi, '_$1_');\n  content = content.replace(/<code[^>]*>([\\s\\S]*?)<\\/code>/gi, '`$1`');\n  // Links - nur Text behalten\n  content = content.replace(/<a[^>]*>([\\s\\S]*?)<\\/a>/gi, '$1');\n  \n  // 5. ALLE ÜBRIGEN TAGS ENTFERNEN\n  content = content.replace(/<[^>]+>/g, ' ');\n  \n  // 6. HTML-ENTITIES DECODIEREN\n  const entities = {\n    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '\"',\n    '&#39;': \"'\", '&apos;': \"'\", '&nbsp;': ' ',\n    '&mdash;': '—', '&ndash;': '–', '&hellip;': '…',\n    '&copy;': '©', '&reg;': '®', '&trade;': '™',\n    '&euro;': '€', '&pound;': '£', '&yen;': '¥',\n    '&laquo;': '«', '&raquo;': '»', '&bull;': '•'\n  };\n  for (const [entity, char] of Object.entries(entities)) {\n    content = content.replace(new RegExp(entity, 'gi'), char);\n  }\n  // Numerische Entities\n  content = content.replace(/&#(\\d+);/g, (m, n) => {\n    try { return String.fromCharCode(parseInt(n)); } catch(e) { return ''; }\n  });\n  content = content.replace(/&#x([0-9a-f]+);/gi, (m, n) => {\n    try { return String.fromCharCode(parseInt(n, 16)); } catch(e) { return ''; }\n  });\n  \n  // 7. CODE-BLÖCKE WIEDERHERSTELLEN\n  for (let i = 0; i < codeBlocks.length; i++) {\n    content = content.replace(`[CODE_BLOCK_${i}]`, `\\n\\`\\`\\`\\n${codeBlocks[i]}\\n\\`\\`\\`\\n`);\n  }\n  \n  // 8. WHITESPACE NORMALISIEREN\n  content = content.replace(/[ \\t]+/g, ' ');\n  content = content.replace(/\\n[ \\t]+/g, '\\n');\n  content = content.replace(/[ \\t]+\\n/g, '\\n');\n  content = content.replace(/\\n{3,}/g, '\\n\\n');\n  content = content.trim();\n  \n  // 9. INTELLIGENTES ABSCHNEIDEN bei 8000 Zeichen\n  const maxLen = 8000;\n  if (content.length > maxLen) {\n    content = content.substring(0, maxLen);\n    // Schneide am Satzende oder Absatz ab\n    const lastPeriod = content.lastIndexOf('. ');\n    const lastNewline = content.lastIndexOf('\\n\\n');\n    const cutPos = Math.max(lastPeriod, lastNewline);\n    if (cutPos > maxLen * 0.75) {\n      content = content.substring(0, cutPos + 1);\n    }\n  }\n  \n  return content;\n}\n\nconst input = $input.first();\nconst htmlContent = input.json.data || input.json.body || '';\nconst cleanContent = cleanHtml(htmlContent);\n\nreturn [{\n  json: {\n    ...input.json,\n    data: cleanContent\n  }\n}];"
+      },
+      "id": "3aa98f23-c982-47e8-ad45-d73f3b6816ed",
+      "name": "Clean HTML Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        54992,
+        40176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Den Text aus dem Input holen\nlet rawText = $input.first().json.text;\n\n// 2. Die Markdown-Formatierung (```json und ```) entfernen\nconst cleanJsonString = rawText.replace(/```json\\n?|```/g, '').trim();\n\n// 3. pubDate aus dem originalen RSS-Item holen (via Merge1)\nconst pubDate = $('Merge1').item.json.pubDate || $('Merge1').item.json.isoDate || '';\n\ntry {\n  const parsedData = JSON.parse(cleanJsonString);\n\n  // pubDate an das Ergebnis anhängen\n  return {\n    json: {\n      ...parsedData,\n      pubDate: pubDate\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      error: \"Parsing fehlgeschlagen\",\n      raw: cleanJsonString\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        55968,
+        40064
+      ],
+      "id": "062fc523-6827-458b-ba59-1b4a128dfb3e",
+      "name": "Convert to Json"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Ordne diesem Business Central Artikel eine Kategorie und Tags zu.\\n\\n## Verfügbare Kategorien (du MUSST eine davon wählen!):\\n' + (($('Fetch Categories').first().json.categories || []).map(c => c.name).join(', ') || 'Entwicklung, KI, News, Azure, Community, Cloud, Performance, Telemetrie, Integration, Konferenz, Administration, Tools & Extensions, Sicherheit, DevOps, Troubleshooting') + '\\n\\n## Verfügbare Tags (wähle 1-3 passende – bevorzuge IMMER bestehende Tags!):\\n' + (($('Fetch Tags').first().json.tags || []).map(t => t.name).join(', ') || '(noch keine vorhanden)') + '\\n\\n## Artikel\\n- Titel: ' + ($json.Title || '') + '\\n- Zusammenfassung: ' + ($json.Summary || '') + '\\n- Quelle: ' + ($json.Creator || 'Unbekannt') + '\\n\\n## Ausgabe als JSON (kein Markdown):\\n{\\n  \"Category\": \"<EXAKT eine der obigen Kategorien>\",\\n  \"Tags\": [\"<1-3 Tags, bevorzugt aus der obigen Liste>\"]\\n}' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Du bist ein Klassifizierungs-Experte für Business Central Inhalte. Deine einzige Aufgabe: Kategorie und Tags zuweisen.\n\n## KATEGORIE – PFLICHT aus der Liste wählen:\n(1) Du MUSST eine Kategorie aus der vorgegebenen Liste wählen (exakte Schreibweise!).\n(2) Erfinde KEINE neuen Kategorien. Es gibt immer eine passende in der Liste.\n(3) Im Zweifel wähle die breiteste passende Kategorie (z.B. 'Entwicklung' für Programmier-Themen, 'News' für allgemeine Neuigkeiten).\n(4) VERBOTENE englische Varianten – verwende IMMER den deutschen Namen:\n    - 'Development' / 'Dev' / 'Programming' → 'Entwicklung'\n    - 'AI' / 'Artificial Intelligence' → 'KI'\n    - 'Security' → 'Sicherheit'\n    - 'Events' → 'Community' oder 'Konferenz'\n(5) Eigennamen (Azure, SaaS) bleiben englisch.\n\n## TAGS – bevorzuge bestehende aus der Liste:\n(1) Wähle 1-3 Tags aus der vorgegebenen Liste (exakte Schreibweise!).\n(2) Verwende IMMER bestehende Tags wenn thematisch passend.\n(3) Erstelle einen neuen Tag NUR wenn wirklich kein bestehender passt – auf Deutsch, Singular vermeiden (z.B. 'Tipps' nicht 'Tipp').\n(4) VERBOTENE Duplikate:\n    - 'AI' → 'KI', 'Development' → 'Entwicklung', 'Security' → 'Sicherheit'\n    - 'Tip'/'Tips' → 'Tipps', 'Best Practice' → 'Best Practices'\n    - 'OnPrem' → 'On-Premises', 'VSCode' → 'VS Code'\n\nGib NUR valides JSON zurück: { \"Category\": \"...\", \"Tags\": [\"...\"] }"
+            }
+          ]
+        }
+      },
+      "id": "454c18ac-7c44-4463-8436-eafa40df9cec",
+      "name": "Categorize Post",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        56224,
+        40064
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {
+          "maxTokens": 256,
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        56224,
+        40256
+      ],
+      "id": "4794567e-d71b-4a0d-bf79-f632d6cecf58",
+      "name": "OpenRouter Category Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RTrWqEQmbddTAwoi",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Kategorisierung und füge sie zum Summary-Ergebnis hinzu\nlet rawText = $input.first().json.text;\nconst cleanJsonString = rawText.replace(/```json\\n?|```/g, '').trim();\n\n// Summary-Daten aus dem vorherigen Convert to Json Node holen\nconst summaryData = $('Convert to Json').item.json;\n\ntry {\n  const catData = JSON.parse(cleanJsonString);\n  return {\n    json: {\n      ...summaryData,\n      Category: catData.Category || 'News',\n      Tags: catData.Tags || [catData.Category || 'News']\n    }\n  };\n} catch (error) {\n  // Fallback: Kategorie 'News' verwenden\n  return {\n    json: {\n      ...summaryData,\n      Category: 'News',\n      Tags: ['News'],\n      categoryError: 'Kategorisierung fehlgeschlagen: ' + error.message\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        56608,
+        40256
+      ],
+      "id": "bf5b7435-7dbf-408d-a292-f6bcf224bb28",
+      "name": "Parse Categorization"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        53600,
+        40032
+      ],
+      "id": "e8ad3199-6eef-4f05-b311-8cc5562c296e",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "LenGAW1YH4NcT7Ml",
+          "mode": "list",
+          "cachedResultName": "RSSFeedsBC",
+          "cachedResultUrl": "/projects/aE1YX2ZiBQXD4ij4/datatables/LenGAW1YH4NcT7Ml"
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        53408,
+        40032
+      ],
+      "id": "21ceec8f-ca1f-4bbf-a277-ed898c395e22",
+      "name": "Feeds"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prüfe ob YouTube-Video vorhanden und wenig Content\n// Falls ja, extrahiere Video-ID für Transkript-Abruf\n\nconst input = $input.first();\nconst content = input.json.data || '';\nconst htmlContent = $('Fetch Page Content').item.json.data || '';\n\n// Suche nach YouTube-URLs in Content oder Original-HTML\nconst patterns = [\n  /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})/,\n  /youtube\\.com\\/watch\\?[^\"']*v=([a-zA-Z0-9_-]{11})/\n];\n\nlet videoId = null;\nfor (const pattern of patterns) {\n  const match = (content + htmlContent).match(pattern);\n  if (match) {\n    videoId = match[1];\n    break;\n  }\n}\n\n// Nur Transkript holen wenn: wenig Content (<500 Zeichen) UND YouTube-Video gefunden\nconst needsTranscript = content.length < 500 && videoId !== null;\n\nreturn [{\n  json: {\n    ...input.json,\n    youtubeVideoId: videoId,\n    needsTranscript: needsTranscript\n  }\n}];"
+      },
+      "id": "2a3c564b-9677-4375-9688-77ef54d2420a",
+      "name": "Check YouTube Video",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        55184,
+        40176
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "needs-transcript",
+              "leftValue": "={{ $json.needsTranscript }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e116b0ad-1282-45b6-bb5a-ca42527e19b4",
+      "name": "Needs Transcript?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        55344,
+        40176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verarbeite Supadata Transcript-Response\nconst input = $input.first();\nconst originalData = $('Check YouTube Video').item.json;\n\nlet transcript = '';\n\ntry {\n  // Supadata gibt content als Array von {text, offset, duration} zurück\n  const content = input.json.content || [];\n  \n  if (Array.isArray(content)) {\n    transcript = content\n      .map(segment => segment.text || '')\n      .filter(t => t && t.trim())\n      .join(' ')\n      .replace(/\\s+/g, ' ')\n      .trim();\n  } else if (typeof content === 'string') {\n    transcript = content;\n  }\n} catch (e) {\n  transcript = '';\n}\n\n// Kombiniere Original-Content mit Transkript\nlet finalContent = originalData.data || '';\n\nif (transcript && transcript.length > 100) {\n  finalContent = finalContent + '\\n\\n---\\n\\n## 📹 Video Transcript\\n\\n' + transcript;\n}\n\nreturn [{\n  json: {\n    ...originalData,\n    data: finalContent,\n    hasTranscript: transcript.length > 100,\n    transcriptLength: transcript.length\n  }\n}];"
+      },
+      "id": "e36dfac3-e347-44fc-b091-33941ecff6a0",
+      "name": "Process Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        55984,
+        40544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kein Transcript verfügbar - Original-Daten zurückgeben\nconst input = $input.first();\n\nreturn [{\n  json: {\n    ...input.json,\n    hasTranscript: false\n  }\n}];"
+      },
+      "id": "c963db25-2726-4042-a4ce-263eddd47b69",
+      "name": "No Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        55760,
+        40832
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getTranscript",
+        "videoUrl": "=https://www.youtube.com/watch?v={{ $('Check YouTube Video').item.json.youtubeVideoId }}"
+      },
+      "type": "n8n-nodes-supadata.supadata",
+      "typeVersion": 1,
+      "position": [
+        55584,
+        40560
+      ],
+      "id": "bd62abe4-71e1-4788-b095-290ae6163293",
+      "name": "Get transcript",
+      "credentials": {
+        "supadataApi": {
+          "id": "QTPk2ydhsYomQL8i",
+          "name": "Supadata account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        52720,
+        39984
+      ],
+      "id": "78522391-89f0-4641-9257-6ffe3df8fa9d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        55600,
+        40272
+      ],
+      "id": "3127d91e-faa1-4883-aa39-2341845bdaa1",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RTrWqEQmbddTAwoi",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://bcbeacon.de/api/existing_urls.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        53088,
+        40032
+      ],
+      "id": "ad62dc3c-3ae7-4af4-a58f-8a3937029719",
+      "name": "Get Already Sent",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7xAg7RMma7Lu4Cma",
+          "name": "BC Beacon API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json: {}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        53248,
+        40032
+      ],
+      "id": "4ecaa804-c1aa-4574-b097-88f9e5bb2d74",
+      "name": "Trigger Feeds"
+    },
+    {
+      "parameters": {
+        "jsCode": "// URL-Normalisierung: Domain-Aliases auflösen + Tracking-Parameter entfernen\nfunction normalizeUrl(url) {\n  if (!url) return '';\n  try {\n    const u = new URL(url);\n    // Domain-Aliases auf kanonische Domain mappen\n    const domainAliases = {\n      'stefanmaron.onrender.com': 'stefanmaron.com',\n    };\n    const host = u.hostname.toLowerCase();\n    if (domainAliases[host]) {\n      u.hostname = domainAliases[host];\n    }\n    // Tracking-Parameter entfernen (utm_*, etc.)\n    const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];\n    trackingParams.forEach(p => u.searchParams.delete(p));\n    // URL ohne Fragment zurückgeben\n    u.hash = '';\n    return u.toString();\n  } catch(e) {\n    return url;\n  }\n}\n\n// Bereits gespeicherte URLs aus der Datenbank laden (via API)\nlet existingUrls = [];\ntry {\n  const apiResponse = $('Get Already Sent').first();\n  existingUrls = apiResponse.json.urls || [];\n} catch(e) {\n  // API nicht erreichbar - sicherheitshalber nichts filtern\n  // (Duplikate werden von INSERT IGNORE in write.php abgefangen)\n  existingUrls = [];\n}\n// Normalisierte DB-URLs für den Vergleich\nconst sentLinks = new Set(existingUrls.map(normalizeUrl));\n\n// Nur Items behalten deren Link noch nicht in der DB ist\nconst results = [];\nfor (const item of $input.all()) {\n  const link = normalizeUrl(item.json.link || '');\n  if (link && !sentLinks.has(link)) {\n    results.push(item);\n  }\n}\n\n// Wenn nichts Neues da ist, leeres Array zurückgeben\nreturn results.length > 0 ? results : [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        54144,
+        40016
+      ],
+      "id": "7518bd88-980d-497f-a697-d32fc548daff",
+      "name": "Filter New Only"
+    },
+    {
+      "parameters": {
+        "jsCode": "// URL-Normalisierung: Domain-Aliases auflösen + Tracking-Parameter entfernen\nfunction normalizeUrl(url) {\n  if (!url) return '';\n  try {\n    const u = new URL(url);\n    const domainAliases = {\n      'stefanmaron.onrender.com': 'stefanmaron.com',\n    };\n    const host = u.hostname.toLowerCase();\n    if (domainAliases[host]) {\n      u.hostname = domainAliases[host];\n    }\n    const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];\n    trackingParams.forEach(p => u.searchParams.delete(p));\n    u.hash = '';\n    return u.toString();\n  } catch(e) {\n    return url;\n  }\n}\n\n// Transform Loop-Output zu Posts-Array für die API\n// KW und Jahr werden von PHP anhand des Datums berechnet\nconst articles = $input.all();\n\n// Deduplicate by normalized Link\nconst seen = new Set();\nconst posts = [];\nfor (const item of articles) {\n  const a = item.json;\n  if (a.error) continue; // KI-Parsing fehlgeschlagen\n  const rawLink = a.Link || a.link;\n  const link = normalizeUrl(rawLink);\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n\n  // pubDate aus RSS -> ISO-Datum umwandeln\n  let date = '';\n  if (a.pubDate) {\n    try {\n      date = new Date(a.pubDate).toISOString().split('T')[0];\n    } catch(e) {\n      date = new Date().toISOString().split('T')[0];\n    }\n  } else {\n    date = new Date().toISOString().split('T')[0];\n  }\n\n  posts.push({\n    title: a.Title || a.title,\n    summary: a.Summary || a.summary,\n    source: a.Creator || a.creator || 'Unbekannt',\n    sourceUrl: link,\n    category: a.Category || a.category || 'News',\n    date: date,\n    tags: (a.Tags || a.tags || [a.Category || a.category]).filter(Boolean)\n  });\n}\n\nreturn [{\n  json: {\n    posts: posts\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        55024,
+        39712
+      ],
+      "id": "a7814df5-c765-4639-852d-239d32b42bfa",
+      "name": "Format for API"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bcbeacon.de/api/write.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.posts) }}",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        55296,
+        39712
+      ],
+      "id": "ae5e44ad-a60f-40d8-b31b-0d6e5d855b2c",
+      "name": "Send to API",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7xAg7RMma7Lu4Cma",
+          "name": "BC Beacon API Key"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Filter New Only": [
+      {
+        "json": {
+          "creator": "demiliani",
+          "title": "SaaS ERP misconceptions: the “on-premises thinking trap”",
+          "link": "https://demiliani.com/2026/01/20/saas-erp-misconceptions-the-on-premises-thinking-trap/",
+          "pubDate": "Tue, 20 Jan 2026 15:38:57 +0000",
+          "content:encoded": "\n<p class=\"wp-block-paragraph\">I think that probably for many of you January is the crazy month of the ERP go-lives (and probably not only restricted to the ERP).</p>\n\n\n\n<p class=\"wp-block-paragraph\">During every go-live of Dynamics 365 Business Central SaaS, I often see the same situation: <strong>lack of mentality of cloud applications from the IT department of many companies</strong>. This post was born as a bit of a vent from the usual things I see or hear people say.</p>\n\n\n\n<p class=\"wp-block-paragraph\">The most pervasive misconception is that SaaS is simply &#8220;<em>on-premises software deployed elsewhere</em>&#8220;. This fundamentally misses what makes SaaS architecturally and operationally distinct.</p>\n\n\n\n<p class=\"wp-block-paragraph\">When IT teams migrate from an on-premises to a SaaS ERP (like Dynamics 365 Business Central), they often:</p>\n\n\n\n<ul class=\"wp-block-list\">\n<li>Attempt to recreate their exact on-premises customization patterns in the cloud.</li>\n\n\n\n<li>Maintain separate infrastructure management practices (backup strategies, patch management, capacity planning).</li>\n\n\n\n<li>Continue building integrations with brittle, point-to-point logic designed for stable, infrequently-changing systems.</li>\n\n\n\n<li>Preserve organizational structures designed around managing physical infrastructure.</li>\n\n\n\n<li>Apply the same change management and testing rigor intended for monolithic, quarterly release cycles.</li>\n</ul>\n\n\n\n<p class=\"wp-block-paragraph\"><strong>The Result:</strong> a SaaS deployment that costs like SaaS but performs and benefits like on-premises, without the control advantages of either.</p>\n\n\n\n<p class=\"wp-block-paragraph\"><em>&#8220;We&#8217;ll customize Business Central exactly like we customized our legacy ERP. We&#8217;ll modify tables, extend fields, and hard-code business logic into the platform. We don&#8217;t want to touch existing systems running inside the company from a long time.&#8221;</em>.</p>\n\n\n\n<p class=\"wp-block-paragraph\">SaaS ERP like Business Central uses <strong>upgrade-safe layering</strong> architecture and this means:</p>\n\n\n\n<ul class=\"wp-block-list\">\n<li>Extensions are layered <em>on top</em> of the core system, not embedded within it.</li>\n\n\n\n<li>You gain agility instead of stability through controlled change.</li>\n\n\n\n<li>Customizations survive periodic updates without manual rework.</li>\n</ul>\n\n\n\n<p class=\"wp-block-paragraph\">The misconception many people have is: constraints equal limitations. The reality instead is: constraints equal automatic compatibility and continuous innovation delivery.</p>\n\n\n\n<h2 class=\"wp-block-heading\">The Paradox.</h2>\n\n\n\n<p class=\"wp-block-paragraph\">Organizations often choose SaaS to reduce IT complexity and cost. Yet by applying on-premises operational thinking, they recreate that complexity within the SaaS environment (paying SaaS subscription costs while maintaining on-premises operational expenses).</p>\n\n\n\n<p class=\"wp-block-paragraph\">The solution is not choosing on-premises or SaaS. It&#8217;s <strong>choosing a governance and operational model that matches the platform architecture</strong>.</p>\n\n\n\n<p class=\"wp-block-paragraph\">SaaS platforms like Business Central deliver maximum value when treated as continuous, managed services. Applying on-premises rigor creates the worst of both worlds: SaaS pricing with on-premises cost and complexity.</p>\n\n\n\n<h2 class=\"wp-block-heading\">What organizations should do instead?</h2>\n\n\n\n<p class=\"wp-block-paragraph\">When adopting a cloud-based ERP, I think that a bit of shift in mindset is required. I always propose the following &#8220;best practices&#8221; to customers:</p>\n\n\n\n<h4 class=\"wp-block-heading\">1. Always start with &#8220;accept as-is&#8221; as the default approach</h4>\n\n\n\n<p class=\"wp-block-paragraph\">Start with out-of-the-box Business Central functionality. Resist customization urges. Document deviations and evaluate whether the business process should adapt instead. This does not mean that you don&#8217;t need to customize (Business Central is fully customizable!) but simply that probably before planning a customization you should evaluate if a change (alias modernization) in your workflow is possible.</p>\n\n\n\n<h4 class=\"wp-block-heading\">2. Shift IT roles from infrastructure to value</h4>\n\n\n\n<p class=\"wp-block-paragraph\">You&#8217;ve decided to adopt a cloud-based ERP solution, so from an IT perspective you should relax the focus on tasks like database administration, infrastructure and capacity planning and enrich your staff with power users, adoption specialists, business analysts.</p>\n\n\n\n<h4 class=\"wp-block-heading\">3. Redesign integrations for the cloud</h4>\n\n\n\n<p class=\"wp-block-paragraph\">The adoption of a cloud-based ERP should have an impact also on the integrations with other systems you have in your corporate. Don&#8217;t pretend that systems will remain as is forever.</p>\n\n\n\n<ul class=\"wp-block-list\">\n<li>Use APIs and events, not database connections.</li>\n\n\n\n<li>Avoid point-to-point connections when you have high-volume traffic.</li>\n\n\n\n<li>Implement idempotent, asynchronous patterns.</li>\n\n\n\n<li>Use cloud-native middleware (Azure Functions, Logic Apps).</li>\n\n\n\n<li>Build loosely-coupled integrations that survive updates.</li>\n</ul>\n\n\n\n<h2 class=\"wp-block-heading\">The top common &#8220;errors&#8221; I see on every go-live.</h2>\n\n\n\n<p class=\"wp-block-paragraph\">Here is a list of the common &#8220;errors&#8221; or bad habits I see on quite every go-live:</p>\n\n\n\n<ul class=\"wp-block-list\">\n<li>Bad or missing usage of cloud services.</li>\n\n\n\n<li>Job Queue tasks centralization: running all integrations inside Business Central (simply because &#8220;it&#8217;s easy&#8221;), with no horizontal scaling.<img src=\"https://s0.wp.com/wp-content/mu-plugins/wpcom-smileys/twemoji/2/72x72/1f92e.png\" alt=\"🤮\" class=\"wp-smiley\" style=\"height: 1em; max-height: 1em;\" /></li>\n\n\n\n<li>No event-driven architecture: polling instead of event-driven patterns, leading to infrastructure overhead.</li>\n\n\n\n<li>Ad-hoc integrations with no standards (integrations built ad-hoc by different teams; no clear architecture; no review process; each integration follows different patterns) leading to expensive maintenance ((different patterns require different expertise).</li>\n\n\n\n<li>Test data bloat: too much test companies active in the real production environment, simply because &#8220;<em>we probably need them</em>&#8220;.<img src=\"https://s0.wp.com/wp-content/mu-plugins/wpcom-smileys/twemoji/2/72x72/1f92e.png\" alt=\"🤮\" class=\"wp-smiley\" style=\"height: 1em; max-height: 1em;\" /></li>\n\n\n\n<li>No cloud governance: missing formal cloud ownership and policies for data retention</li>\n</ul>\n\n\n\n<h2 class=\"wp-block-heading\">My two cents&#8230;</h2>\n\n\n\n<p class=\"wp-block-paragraph\">The solution is not choosing on-premises or SaaS. It&#8217;s <strong>choosing a governance and operational model that matches the platform architecture</strong>.</p>\n\n\n\n<p class=\"wp-block-paragraph\">SaaS platforms like Business Central deliver maximum value when treated as continuous, managed services. Applying on-premises rigor creates the worst of both worlds.</p>\n\n\n\n<p class=\"wp-block-paragraph\">The question isn&#8217;t &#8220;<em>How do we customize SaaS to work like our on-premises ERP?</em>&#8221; The question should be: &#8220;<em>How do we change our operations to take advantage of what SaaS inherently provides?</em>&#8220;</p>\n\n\n\n<p class=\"wp-block-paragraph\">This is a leadership challenge, not a technical one. Your technical team will default to what they know. Your architects will try to recreate the patterns they&#8217;ve mastered. Your IT operations will manage the cloud like they managed the datacenter. This is human nature. </p>\n\n\n\n<p class=\"wp-block-paragraph\">Your job as a leader is to say: &#8220;<em>Not this time. This time we&#8217;re doing it differently. We&#8217;re building cloud-native. We&#8217;re thinking distributed. We&#8217;re optimizing for the platform, not for our legacy comfort.</em>&#8220;. Your team will thank you in three years when they&#8217;re maintaining elegant systems instead of brittle ones. When they&#8217;re building features instead of fighting architecture. When they&#8217;re explaining cloud-native patterns instead of database query optimization.</p>\n\n\n\n<p class=\"wp-block-paragraph\">Don&#8217;t be the architect of yesterday building yesterday&#8217;s solutions on today&#8217;s platform. Be the architect of tomorrow, building tomorrow&#8217;s systems right now. <img src=\"https://s0.wp.com/wp-content/mu-plugins/wpcom-smileys/twemoji/2/72x72/1f680.png\" alt=\"🚀\" class=\"wp-smiley\" style=\"height: 1em; max-height: 1em;\" /> The choice you make today determines the organization you become.</p>\n",
+          "content:encodedSnippet": "I think that probably for many of you January is the crazy month of the ERP go-lives (and probably not only restricted to the ERP).\nDuring every go-live of Dynamics 365 Business Central SaaS, I often see the same situation: lack of mentality of cloud applications from the IT department of many companies. This post was born as a bit of a vent from the usual things I see or hear people say.\nThe most pervasive misconception is that SaaS is simply “on-premises software deployed elsewhere“. This fundamentally misses what makes SaaS architecturally and operationally distinct.\nWhen IT teams migrate from an on-premises to a SaaS ERP (like Dynamics 365 Business Central), they often:\nAttempt to recreate their exact on-premises customization patterns in the cloud.\nMaintain separate infrastructure management practices (backup strategies, patch management, capacity planning).\nContinue building integrations with brittle, point-to-point logic designed for stable, infrequently-changing systems.\nPreserve organizational structures designed around managing physical infrastructure.\nApply the same change management and testing rigor intended for monolithic, quarterly release cycles.\nThe Result: a SaaS deployment that costs like SaaS but performs and benefits like on-premises, without the control advantages of either.\n“We’ll customize Business Central exactly like we customized our legacy ERP. We’ll modify tables, extend fields, and hard-code business logic into the platform. We don’t want to touch existing systems running inside the company from a long time.”.\nSaaS ERP like Business Central uses upgrade-safe layering architecture and this means:\nExtensions are layered on top of the core system, not embedded within it.\nYou gain agility instead of stability through controlled change.\nCustomizations survive periodic updates without manual rework.\nThe misconception many people have is: constraints equal limitations. The reality instead is: constraints equal automatic compatibility and continuous innovation delivery.\nThe Paradox.\nOrganizations often choose SaaS to reduce IT complexity and cost. Yet by applying on-premises operational thinking, they recreate that complexity within the SaaS environment (paying SaaS subscription costs while maintaining on-premises operational expenses).\nThe solution is not choosing on-premises or SaaS. It’s choosing a governance and operational model that matches the platform architecture.\nSaaS platforms like Business Central deliver maximum value when treated as continuous, managed services. Applying on-premises rigor creates the worst of both worlds: SaaS pricing with on-premises cost and complexity.\nWhat organizations should do instead?\nWhen adopting a cloud-based ERP, I think that a bit of shift in mindset is required. I always propose the following “best practices” to customers:\n1. Always start with “accept as-is” as the default approach\nStart with out-of-the-box Business Central functionality. Resist customization urges. Document deviations and evaluate whether the business process should adapt instead. This does not mean that you don’t need to customize (Business Central is fully customizable!) but simply that probably before planning a customization you should evaluate if a change (alias modernization) in your workflow is possible.\n2. Shift IT roles from infrastructure to value\nYou’ve decided to adopt a cloud-based ERP solution, so from an IT perspective you should relax the focus on tasks like database administration, infrastructure and capacity planning and enrich your staff with power users, adoption specialists, business analysts.\n3. Redesign integrations for the cloud\nThe adoption of a cloud-based ERP should have an impact also on the integrations with other systems you have in your corporate. Don’t pretend that systems will remain as is forever.\nUse APIs and events, not database connections.\nAvoid point-to-point connections when you have high-volume traffic.\nImplement idempotent, asynchronous patterns.\nUse cloud-native middleware (Azure Functions, Logic Apps).\nBuild loosely-coupled integrations that survive updates.\nThe top common “errors” I see on every go-live.\nHere is a list of the common “errors” or bad habits I see on quite every go-live:\nBad or missing usage of cloud services.\nJob Queue tasks centralization: running all integrations inside Business Central (simply because “it’s easy”), with no horizontal scaling.\nNo event-driven architecture: polling instead of event-driven patterns, leading to infrastructure overhead.\nAd-hoc integrations with no standards (integrations built ad-hoc by different teams; no clear architecture; no review process; each integration follows different patterns) leading to expensive maintenance ((different patterns require different expertise).\nTest data bloat: too much test companies active in the real production environment, simply because “we probably need them“.\nNo cloud governance: missing formal cloud ownership and policies for data retention\nMy two cents…\nThe solution is not choosing on-premises or SaaS. It’s choosing a governance and operational model that matches the platform architecture.\nSaaS platforms like Business Central deliver maximum value when treated as continuous, managed services. Applying on-premises rigor creates the worst of both worlds.\nThe question isn’t “How do we customize SaaS to work like our on-premises ERP?” The question should be: “How do we change our operations to take advantage of what SaaS inherently provides?“\nThis is a leadership challenge, not a technical one. Your technical team will default to what they know. Your architects will try to recreate the patterns they’ve mastered. Your IT operations will manage the cloud like they managed the datacenter. This is human nature. \nYour job as a leader is to say: “Not this time. This time we’re doing it differently. We’re building cloud-native. We’re thinking distributed. We’re optimizing for the platform, not for our legacy comfort.“. Your team will thank you in three years when they’re maintaining elegant systems instead of brittle ones. When they’re building features instead of fighting architecture. When they’re explaining cloud-native patterns instead of database query optimization.\nDon’t be the architect of yesterday building yesterday’s solutions on today’s platform. Be the architect of tomorrow, building tomorrow’s systems right now.  The choice you make today determines the organization you become.",
+          "dc:creator": "demiliani",
+          "comments": "https://demiliani.com/2026/01/20/saas-erp-misconceptions-the-on-premises-thinking-trap/#comments",
+          "content": "I think that probably for many of you January is the crazy month of the ERP go-lives (and probably not &#8230; <a class=\"more-link\" href=\"https://demiliani.com/2026/01/20/saas-erp-misconceptions-the-on-premises-thinking-trap/\">More</a>",
+          "contentSnippet": "I think that probably for many of you January is the crazy month of the ERP go-lives (and probably not … More",
+          "guid": "http://demiliani.com/?p=13215",
+          "categories": [
+            "Cloud",
+            "Dynamics 365 Business Central",
+            "Personal",
+            "Azure",
+            "Cloud Migration",
+            "D365BC",
+            "ERP",
+            "MSDyn365BC",
+            "MsDynNAV",
+            "NAV",
+            "Serverless"
+          ],
+          "isoDate": "2026-01-20T15:38:57.000Z",
+          "feedAuthor": "demiliani"
+        },
+        "pairedItem": {
+          "item": 21
+        }
+      },
+      {
+        "json": {
+          "creator": "demiliani",
+          "title": "Model Context Protocol and the “too many tools” problem.",
+          "link": "https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/",
+          "pubDate": "Thu, 04 Sep 2025 08:40:01 +0000",
+          "content:encoded": "\n<p class=\"wp-block-paragraph\">Some weeks ago <a href=\"https://demiliani.com/2025/08/22/visual-studio-code-and-autodiscovery-of-mcp-servers-better-to-stay-in-control/\">I wrote this post</a> regarding the autodiscovery of MCP servers feature that many clients (like GitHub Copilot, Cursor and others) have and why it&#8217;s better to stay in control of that.</p>\n\n\n\n<p class=\"wp-block-paragraph\">Then some days after I posted this on Linkedin:</p>\n\n\n<div class=\"wp-block-image\">\n<figure class=\"aligncenter size-large is-resized\"><a href=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png\"><img loading=\"lazy\" width=\"753\" height=\"1024\" data-attachment-id=\"12458\" data-permalink=\"https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/mcp_toomanytools_01/\" data-orig-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png\" data-orig-size=\"780,1061\" data-comments-opened=\"1\" data-image-meta=\"{&quot;aperture&quot;:&quot;0&quot;,&quot;credit&quot;:&quot;&quot;,&quot;camera&quot;:&quot;&quot;,&quot;caption&quot;:&quot;&quot;,&quot;created_timestamp&quot;:&quot;0&quot;,&quot;copyright&quot;:&quot;&quot;,&quot;focal_length&quot;:&quot;0&quot;,&quot;iso&quot;:&quot;0&quot;,&quot;shutter_speed&quot;:&quot;0&quot;,&quot;title&quot;:&quot;&quot;,&quot;orientation&quot;:&quot;0&quot;}\" data-image-title=\"MCP_TooManyTools_01\" data-image-description=\"\" data-image-caption=\"\" data-medium-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png?w=221\" data-large-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png?w=753\" src=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png?w=753\" alt=\"\" class=\"wp-image-12458\" style=\"width:600px\" srcset=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png?w=753 753w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png?w=110 110w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png?w=221 221w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png?w=768 768w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_01.png 780w\" sizes=\"(max-width: 753px) 100vw, 753px\" /></a></figure>\n</div>\n\n\n<p class=\"wp-block-paragraph\">And today I want to find a bit of time to explain why I posted this image and this message. The image was related to Claude Code, but this is not relevant because the concept is the same for every LLM. </p>\n\n\n\n<p class=\"wp-block-paragraph\">The <strong>context window</strong> for an LLM is its memory capacity for a single conversation and it includes your messages, LLM responses, file contents and tools. </p>\n\n\n\n<p class=\"wp-block-paragraph\">In the example I posted, you can see that <em>claude-sonnet-4</em> has a standard context window size of 200K tokens. In my Claude Code I have installed the Playwright MCP server that exposes a long list of tools (as you can see from the first image).</p>\n\n\n\n<p class=\"wp-block-paragraph\">As you can see from the image below, all these tools (just to be exposed to the LLM) consume around 22.2% of its context window: </p>\n\n\n\n<figure class=\"wp-block-image size-large\"><a href=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png\"><img loading=\"lazy\" width=\"1024\" height=\"347\" data-attachment-id=\"12461\" data-permalink=\"https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/mcp_toomanytools_02/\" data-orig-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png\" data-orig-size=\"1266,430\" data-comments-opened=\"1\" data-image-meta=\"{&quot;aperture&quot;:&quot;0&quot;,&quot;credit&quot;:&quot;&quot;,&quot;camera&quot;:&quot;&quot;,&quot;caption&quot;:&quot;&quot;,&quot;created_timestamp&quot;:&quot;0&quot;,&quot;copyright&quot;:&quot;&quot;,&quot;focal_length&quot;:&quot;0&quot;,&quot;iso&quot;:&quot;0&quot;,&quot;shutter_speed&quot;:&quot;0&quot;,&quot;title&quot;:&quot;&quot;,&quot;orientation&quot;:&quot;0&quot;}\" data-image-title=\"MCP_TooManyTools_02\" data-image-description=\"\" data-image-caption=\"\" data-medium-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png?w=300\" data-large-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png?w=1024\" src=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png?w=1024\" alt=\"\" class=\"wp-image-12461\" srcset=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png?w=1024 1024w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png?w=150 150w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png?w=300 300w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png?w=768 768w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_02.png 1266w\" sizes=\"(max-width: 1024px) 100vw, 1024px\" /></a></figure>\n\n\n\n<p class=\"wp-block-paragraph\"><strong>Having too many tools exposed in an MCP server can degrade the performances and the output of your LLM!</strong> With a lot of tools exposed, LLM latency will be increased (so slower performance) and the agent can be distracted, but the main problem is another: <strong>if tools are crowding out the context window, there&#8217;s less room for context about the current project or goal.</strong></p>\n\n\n\n<p class=\"wp-block-paragraph\">When adding MCP servers to your client, it&#8217;s quite common to give the LLM access to every single tool you can find. But this is a mistake! Overwhelming the LLM with tool choices often leads to suboptimal tool choices or wasted tokens while the LLM goes on hallucinations.</p>\n\n\n\n<p class=\"wp-block-paragraph\">Some clients are aware of this problem. For example, <span style=\"text-decoration: underline\">Cursor has an hard limit of 40 MCP tools</span> in total that can be exposed to LLMs, regardless of how many MCP servers are installed. If you exceed this limit, Cursor will only send the first 40 tools to the agent, making the remaining tools inaccessible. To work around this, you can for example manually disable unneeded tools in your <code>mcp.json</code> file. Another approach is to install a third-party proxy service, such as <a href=\"https://github.com/smart-mcp-proxy/mcpproxy-go/\">MCP Proxy</a>, which acts as an intermediary and allows Cursor to access thousands of tools. </p>\n\n\n\n<p class=\"wp-block-paragraph\"><span style=\"text-decoration: underline\">GitHub Copilot supports an hard limit of maximum 128 MCP tools enabled at a time</span>. In GitHub Copilot a chat request can have a maximum of 128 tools enabled at a time. If you have more than 128 tools selected, you need to reduce the number of tools by deselecting some tools in the tools picker, or ensure that virtual tools are enabled (<a href=\"//settings/github.copilot.chat.virtualTools.threshold\">github.copilot.chat.virtualTools.threshold</a>):</p>\n\n\n<div class=\"wp-block-image\">\n<figure class=\"aligncenter size-large\"><a href=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png\"><img loading=\"lazy\" width=\"732\" height=\"368\" data-attachment-id=\"12468\" data-permalink=\"https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/mcp_toomanytools_03/\" data-orig-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png\" data-orig-size=\"732,368\" data-comments-opened=\"1\" data-image-meta=\"{&quot;aperture&quot;:&quot;0&quot;,&quot;credit&quot;:&quot;&quot;,&quot;camera&quot;:&quot;&quot;,&quot;caption&quot;:&quot;&quot;,&quot;created_timestamp&quot;:&quot;0&quot;,&quot;copyright&quot;:&quot;&quot;,&quot;focal_length&quot;:&quot;0&quot;,&quot;iso&quot;:&quot;0&quot;,&quot;shutter_speed&quot;:&quot;0&quot;,&quot;title&quot;:&quot;&quot;,&quot;orientation&quot;:&quot;0&quot;}\" data-image-title=\"MCP_TooManyTools_03\" data-image-description=\"\" data-image-caption=\"\" data-medium-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png?w=300\" data-large-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png?w=732\" src=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png?w=732\" alt=\"\" class=\"wp-image-12468\" srcset=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png 732w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png?w=150 150w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_03.png?w=300 300w\" sizes=\"(max-width: 732px) 100vw, 732px\" /></a></figure>\n</div>\n\n\n<p class=\"wp-block-paragraph\">The hard limit reason is always the same: to prevent &#8220;flooding&#8221; the agent&#8217;s context window with too many tools, which can degrade LLM&#8217;s performance. </p>\n\n\n\n<p class=\"wp-block-paragraph\">The simple solution to avoid this &#8220;too many exposed MCP tools&#8221; problem is to deactivate the tools you don&#8217;t need per conversation. Many populars MCP client support this possibility, but I can agree that this is quite frustrating. </p>\n\n\n\n<p class=\"wp-block-paragraph\">Another possible way is to explicitly instruct the LLM to what MCP server it can use for the task, but again this is noisy. Generally speaking, <span style=\"text-decoration: underline\">manually selecting tools becomes tedious, especially when you’re unsure which tools you need for a specific task</span>.</p>\n\n\n\n<h2 class=\"wp-block-heading\">MCP server design best practice</h2>\n\n\n\n<p class=\"wp-block-paragraph\">I think that<strong> this problem should be handled in the MCP designing phase!</strong> I&#8217;m a big fan of <span style=\"text-decoration: underline\">building focused MCP servers from the beginning</span>. My personal rules:</p>\n\n\n\n<ul class=\"wp-block-list\">\n<li>Don&#8217;t create a single MCP server for everything, but instead create different MCPs for different goals.</li>\n\n\n\n<li>Build your MCP server around a user&#8217;s workflow rather than around the underlying framework or API. Scoped MCP servers work absolutely better.</li>\n</ul>\n\n\n\n<p class=\"wp-block-paragraph\">Just to give a stupid example, PERSONALLY instead of doing something like this (single MCP server with tons of tools exposed):</p>\n\n\n<div class=\"wp-block-image\">\n<figure class=\"aligncenter size-large is-resized\"><a href=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png\"><img loading=\"lazy\" width=\"1024\" height=\"818\" data-attachment-id=\"12472\" data-permalink=\"https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/mcp_toomanytools_04/\" data-orig-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png\" data-orig-size=\"1356,1084\" data-comments-opened=\"1\" data-image-meta=\"{&quot;aperture&quot;:&quot;0&quot;,&quot;credit&quot;:&quot;&quot;,&quot;camera&quot;:&quot;&quot;,&quot;caption&quot;:&quot;&quot;,&quot;created_timestamp&quot;:&quot;0&quot;,&quot;copyright&quot;:&quot;&quot;,&quot;focal_length&quot;:&quot;0&quot;,&quot;iso&quot;:&quot;0&quot;,&quot;shutter_speed&quot;:&quot;0&quot;,&quot;title&quot;:&quot;&quot;,&quot;orientation&quot;:&quot;0&quot;}\" data-image-title=\"MCP_TooManyTools_04\" data-image-description=\"\" data-image-caption=\"\" data-medium-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png?w=300\" data-large-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png?w=1024\" src=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png?w=1024\" alt=\"\" class=\"wp-image-12472\" style=\"width:500px\" srcset=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png?w=1024 1024w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png?w=150 150w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png?w=300 300w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png?w=768 768w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_04.png 1356w\" sizes=\"(max-width: 1024px) 100vw, 1024px\" /></a></figure>\n</div>\n\n\n<p class=\"wp-block-paragraph\">I prefer to  do something more scoped, like the following:</p>\n\n\n<div class=\"wp-block-image\">\n<figure class=\"aligncenter size-large is-resized\"><a href=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png\"><img loading=\"lazy\" width=\"1024\" height=\"978\" data-attachment-id=\"12473\" data-permalink=\"https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/mcp_toomanytools_05/\" data-orig-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png\" data-orig-size=\"1363,1303\" data-comments-opened=\"1\" data-image-meta=\"{&quot;aperture&quot;:&quot;0&quot;,&quot;credit&quot;:&quot;&quot;,&quot;camera&quot;:&quot;&quot;,&quot;caption&quot;:&quot;&quot;,&quot;created_timestamp&quot;:&quot;0&quot;,&quot;copyright&quot;:&quot;&quot;,&quot;focal_length&quot;:&quot;0&quot;,&quot;iso&quot;:&quot;0&quot;,&quot;shutter_speed&quot;:&quot;0&quot;,&quot;title&quot;:&quot;&quot;,&quot;orientation&quot;:&quot;0&quot;}\" data-image-title=\"MCP_TooManyTools_05\" data-image-description=\"\" data-image-caption=\"\" data-medium-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png?w=300\" data-large-file=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png?w=1024\" src=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png?w=1024\" alt=\"\" class=\"wp-image-12473\" style=\"width:500px\" srcset=\"https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png?w=1024 1024w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png?w=150 150w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png?w=300 300w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png?w=768 768w, https://demiliani.com/wp-content/uploads/2025/09/mcp_toomanytools_05.png 1363w\" sizes=\"(max-width: 1024px) 100vw, 1024px\" /></a></figure>\n</div>\n\n\n<p class=\"wp-block-paragraph\">Another possible approach (that I&#8217;ve pesonally not yet used, but I think it&#8217;s interesting) is using a proxy, like in the following schema (image credit to solo.io):</p>\n\n\n<div class=\"wp-block-image\">\n<figure class=\"aligncenter size-large\"><img src=\"https://cdn.prod.website-files.com/6704482c45ef6ead081645ff/680edb5cc005ae3740b44f20_AD_4nXe5EEts9seCuMkSrWJKhHTUZge20vLCkwAkob0IpjlkU3gVYa47diOGNZaXRaKb-9k3BCr2HDRwlDxR75eRmnKJh49ncHEsl8EDiIXTCBsuFAgKcR_i77cQCenHJ-qSa0RwV5e2.gif\" alt=\"\" /></figure>\n</div>\n\n\n<p class=\"wp-block-paragraph\">Generally speaking, a well-designed MCP server gives agents exactly what they need to accomplish their goals without overwhelming them with choices they don’t need. Domain-driven design is often a key aspect on this topic.</p>\n",
+          "content:encodedSnippet": "Some weeks ago I wrote this post regarding the autodiscovery of MCP servers feature that many clients (like GitHub Copilot, Cursor and others) have and why it’s better to stay in control of that.\nThen some days after I posted this on Linkedin:\n\n\n\n\nAnd today I want to find a bit of time to explain why I posted this image and this message. The image was related to Claude Code, but this is not relevant because the concept is the same for every LLM. \nThe context window for an LLM is its memory capacity for a single conversation and it includes your messages, LLM responses, file contents and tools. \nIn the example I posted, you can see that claude-sonnet-4 has a standard context window size of 200K tokens. In my Claude Code I have installed the Playwright MCP server that exposes a long list of tools (as you can see from the first image).\nAs you can see from the image below, all these tools (just to be exposed to the LLM) consume around 22.2% of its context window: \n\n\n\n\nHaving too many tools exposed in an MCP server can degrade the performances and the output of your LLM! With a lot of tools exposed, LLM latency will be increased (so slower performance) and the agent can be distracted, but the main problem is another: if tools are crowding out the context window, there’s less room for context about the current project or goal.\nWhen adding MCP servers to your client, it’s quite common to give the LLM access to every single tool you can find. But this is a mistake! Overwhelming the LLM with tool choices often leads to suboptimal tool choices or wasted tokens while the LLM goes on hallucinations.\nSome clients are aware of this problem. For example, Cursor has an hard limit of 40 MCP tools in total that can be exposed to LLMs, regardless of how many MCP servers are installed. If you exceed this limit, Cursor will only send the first 40 tools to the agent, making the remaining tools inaccessible. To work around this, you can for example manually disable unneeded tools in your mcp.json file. Another approach is to install a third-party proxy service, such as MCP Proxy, which acts as an intermediary and allows Cursor to access thousands of tools. \nGitHub Copilot supports an hard limit of maximum 128 MCP tools enabled at a time. In GitHub Copilot a chat request can have a maximum of 128 tools enabled at a time. If you have more than 128 tools selected, you need to reduce the number of tools by deselecting some tools in the tools picker, or ensure that virtual tools are enabled (github.copilot.chat.virtualTools.threshold):\n\n\n\n\nThe hard limit reason is always the same: to prevent “flooding” the agent’s context window with too many tools, which can degrade LLM’s performance. \nThe simple solution to avoid this “too many exposed MCP tools” problem is to deactivate the tools you don’t need per conversation. Many populars MCP client support this possibility, but I can agree that this is quite frustrating. \nAnother possible way is to explicitly instruct the LLM to what MCP server it can use for the task, but again this is noisy. Generally speaking, manually selecting tools becomes tedious, especially when you’re unsure which tools you need for a specific task.\nMCP server design best practice\nI think that this problem should be handled in the MCP designing phase! I’m a big fan of building focused MCP servers from the beginning. My personal rules:\nDon’t create a single MCP server for everything, but instead create different MCPs for different goals.\nBuild your MCP server around a user’s workflow rather than around the underlying framework or API. Scoped MCP servers work absolutely better.\nJust to give a stupid example, PERSONALLY instead of doing something like this (single MCP server with tons of tools exposed):\n\n\n\n\nI prefer to  do something more scoped, like the following:\n\n\n\n\nAnother possible approach (that I’ve pesonally not yet used, but I think it’s interesting) is using a proxy, like in the following schema (image credit to solo.io):\n\n\n\n\nGenerally speaking, a well-designed MCP server gives agents exactly what they need to accomplish their goals without overwhelming them with choices they don’t need. Domain-driven design is often a key aspect on this topic.",
+          "dc:creator": "demiliani",
+          "comments": "https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/#respond",
+          "content": "Some weeks ago I wrote this post regarding the autodiscovery of MCP servers feature that many clients (like GitHub Copilot, &#8230; <a class=\"more-link\" href=\"https://demiliani.com/2025/09/04/model-context-protocol-and-the-too-many-tools-problem/\">More</a>",
+          "contentSnippet": "Some weeks ago I wrote this post regarding the autodiscovery of MCP servers feature that many clients (like GitHub Copilot, … More",
+          "guid": "http://demiliani.com/?p=12455",
+          "categories": [
+            "AI",
+            "Dynamics 365 Business Central",
+            "Copilot",
+            "D365BC",
+            "GitHub Copilot",
+            "llm",
+            "MCP",
+            "MSDyn365BC"
+          ],
+          "isoDate": "2025-09-04T08:40:01.000Z",
+          "feedAuthor": "demiliani"
+        },
+        "pairedItem": {
+          "item": 44
+        }
+      }
+    ],
+    "Get Already Sent": [
+      {
+        "json": {
+          "urls": [
+            "https://www.mynavblog.com/2021/02/16/automated-tests-dont-listen-to-microsoft/",
+            "https://stefanmaron.com/posts/designing-complex-pages-in-business-central/",
+            "https://stefanmaron.com/posts/al-on-linux-devcontainers-codespaces/",
+            "https://stefanmaron.com/posts/validate-all-tables-all-fields-always/",
+            "https://stefanmaron.com/posts/planning-table-indexes-bc-performance/",
+            "https://vjeko.com/2025/12/12/important-announcement-for-teams-maintaining-private-al-object-id-ninja-backend-get-ready-for-v3/",
+            "https://yzhums.com/70836/",
+            "https://stefanmaron.com/vcard/stefanmaron/",
+            "https://stefanmaron.com/about/",
+            "https://stefanmaron.com/posts/how-to-fix-problems-with-docker-dns-resolution/",
+            "https://stefanmaron.com/posts/coding4perfomance-1-text-builder/",
+            "https://stefanmaron.com/posts/coding4performance-2-asynchronous-development-and-background-tasks/",
+            "https://stefanmaron.com/posts/coding4performance-3-start-session/",
+            "https://stefanmaron.com/posts/coding4performance-4-task-scheduler/",
+            "https://stefanmaron.com/posts/coding4performance-5-findset-vs-findfirst/",
+            "https://stefanmaron.com/posts/condition-basics-in-al/",
+            "https://stefanmaron.com/posts/vs-code-extension-al-lint/",
+            "https://stefanmaron.com/posts/al-lint-v0-1-7-code-metrics/",
+            "https://stefanmaron.com/posts/business-central-and-multiline-fields/",
+            "https://stefanmaron.com/posts/automated-export-objects-from-c-al/",
+            "https://stefanmaron.com/posts/in-vs-code-you-want-to-stage-manually/",
+            "https://stefanmaron.com/posts/msdyn365bc-code-history/",
+            "https://stefanmaron.com/posts/thoughts-about-automated-testing-in-projects/",
+            "https://stefanmaron.com/posts/can-i-copy-my-container/",
+            "https://stefanmaron.com/posts/video-series-how-do-i/",
+            "https://stefanmaron.com/posts/performance-variables-exposed-as-field-on-a-page/",
+            "https://stefanmaron.com/posts/clean-up-after-yourself-git/",
+            "https://stefanmaron.com/posts/speed-up-bc-container-creation/",
+            "https://stefanmaron.com/posts/code-review-loop-over-an-enum/",
+            "https://stefanmaron.com/posts/upgrade-a-bc-cronos-database-using-docker/",
+            "https://stefanmaron.com/posts/validate-a-commit-before-it-is-committed/",
+            "https://stefanmaron.com/posts/msdyn365bc-code-history-got-a-few-updates/",
+            "https://stefanmaron.com/posts/be-careful-with-dynamic-code/",
+            "https://stefanmaron.com/posts/businesscentral-lintercop/",
+            "https://stefanmaron.com/posts/businesscentral-lintercop-goes-vs-code/",
+            "https://stefanmaron.com/posts/updates-on-my-lintercop-project/",
+            "https://stefanmaron.com/posts/how-to-takle-all-the-challenges-with-bc-saas/",
+            "https://stefanmaron.com/posts/businesscentral-lintercop-v0-23-0/",
+            "https://stefanmaron.com/posts/changes-in-msdyn365bc-code-history/",
+            "https://stefanmaron.com/posts/business-central-lintercop-with-older-versions-of-bc/",
+            "https://stefanmaron.com/posts/bugfixes-for-lintercop-rule-lc0015/",
+            "https://stefanmaron.com/eula/",
+            "https://stefanmaron.com/privacystatement/",
+            "https://stefanmaron.com/business-central-clockify-integration/",
+            "https://stefanmaron.com/automatic-item-tracking/",
+            "https://stefanmaron.com/posts/my-journey-to-linux/",
+            "https://stefanmaron.com/posts/bc-techdays-2023/",
+            "https://stefanmaron.com/posts/golivechecklist/",
+            "https://stefanmaron.com/posts/myapproachtocustomapi/",
+            "https://stefanmaron.com/opensourcealprojects/",
+            "https://stefanmaron.com/posts/viewchangesofbasepermissionsets/",
+            "https://stefanmaron.com/posts/running_windows_11_debian_host/",
+            "https://stefanmaron.com/posts/al-unit-testing-writeoff-app-appource/",
+            "https://stefanmaron.com/posts/al-automatic-write-offs-overpayments-interface-pattern/",
+            "https://stefanmaron.com/posts/filterpagebuilder-getview-language-bug-spare-brained-licensing/",
+            "https://stefanmaron.com/posts/build-better-error-catching-part-1/",
+            "https://stefanmaron.com/posts/build-better-error-catching-without-test-framework/",
+            "https://stefanmaron.com/posts/write-off-app-abcsource-finishing-touches/",
+            "https://stefanmaron.com/posts/reviewing-ai-test-toolkit-pr-bcapps-guideline-fixes/",
+            "https://stefanmaron.com/posts/creating-the-errorinfo-wrapper/",
+            "https://stefanmaron.com/posts/bcv24-error-info-wrapper/",
+            "https://stefanmaron.com/posts/msdyn365bc-ntfy-development-session/",
+            "https://stefanmaron.com/posts/table-keys-and-sql-indexes-in-business-central/",
+            "https://stefanmaron.com/posts/indirect-permissions-bc-stream/",
+            "https://stefanmaron.com/posts/basic-repo-setup-with-al-go/",
+            "https://stefanmaron.com/posts/lintercop-lc0068-indirect-permissions-fixes/",
+            "https://stefanmaron.com/posts/excelreportsonprem/",
+            "https://stefanmaron.com/posts/bc-database-transactions-deep-dive/",
+            "https://stefanmaron.com/posts/nuget-installer-extension-bc/",
+            "https://stefanmaron.com/posts/nuget-installer-bc-coding-stream-2/",
+            "https://stefanmaron.com/posts/indirectpermissions/",
+            "https://stefanmaron.com/posts/interfaces-in-business-central/",
+            "https://stefanmaron.com/posts/msdyn365.code.history_updates/",
+            "https://stefanmaron.com/posts/msdyn365bc-code-history-tips-tricks/",
+            "https://stefanmaron.com/posts/businesscentral-sentinel-first-rules/",
+            "https://stefanmaron.com/posts/businesscentral-sentinel-documentation-stream/",
+            "https://stefanmaron.com/posts/appsource-entitlements-business-central/",
+            "https://stefanmaron.com/posts/sentinel-telemetry-card-page/",
+            "https://stefanmaron.com/posts/bc-development-on-linux/",
+            "https://stefanmaron.com/posts/introducing-the-no-shortcuts-series-the-100-correct-way-to-develop-for-business-central/",
+            "https://stefanmaron.com/posts/how-to-set-up-a-new-business-central-development-project/",
+            "https://stefanmaron.com/posts/blog-post-late-hotfix-handling/",
+            "https://stefanmaron.com/posts/fixing-al-debugger-linux-wayland/",
+            "https://stefanmaron.com/posts/al-development-claude-code-multi-agent-workflow/",
+            "https://stefanmaron.com/posts/claude-code-dev-container-al/",
+            "https://stefanmaron.com/posts/bc-background-processing-make-it-feel-fast/",
+            "https://stefanmaron.com/posts/turning-streams-into-blog-posts/",
+            "https://yzhums.com/70840/",
+            "https://yzhums.com/70782/",
+            "https://waldo.be/2026/02/24/troubleshooting-series-ep5-telemetry/",
+            "https://yzhums.com/17631/",
+            "https://www.hougaard.com/looking-back-at-10-years-ago/",
+            "https://demiliani.com/2026/02/23/dynamics-365-business-central-download-symbols-from-microsofts-public-nuget-source/",
+            "https://tine.staric.net/blog/2024/release-wave-blueprint/",
+            "https://tine.staric.net/blog/2024/new-operational-limits/",
+            "https://tine.staric.net/blog/2024/spring-conf-recap/",
+            "https://tine.staric.net/blog/2024/namespaces/",
+            "https://tine.staric.net/blog/2024/preprocessing-symbols/",
+            "https://tine.staric.net/blog/2025/trigger-sequence/",
+            "https://tine.staric.net/blog/2025/copilot-fancy-autocomplete/",
+            "https://tine.staric.net/blog/2025/areopa-visualized/",
+            "https://tine.staric.net/blog/2025/copilot-fancy-autocomplete-vol2/",
+            "https://tine.staric.net/blog/2025/format-cheatsheet/",
+            "https://stefanmaron.onrender.com/vcard/stefanmaron/",
+            "https://stefanmaron.onrender.com/about/",
+            "https://stefanmaron.onrender.com/posts/how-to-fix-problems-with-docker-dns-resolution/",
+            "https://stefanmaron.onrender.com/posts/coding4perfomance-1-text-builder/",
+            "https://stefanmaron.onrender.com/posts/coding4performance-2-asynchronous-development-and-background-tasks/",
+            "https://stefanmaron.onrender.com/posts/coding4performance-3-start-session/",
+            "https://stefanmaron.onrender.com/posts/coding4performance-4-task-scheduler/",
+            "https://stefanmaron.onrender.com/posts/coding4performance-5-findset-vs-findfirst/",
+            "https://stefanmaron.onrender.com/posts/condition-basics-in-al/",
+            "https://stefanmaron.onrender.com/posts/vs-code-extension-al-lint/",
+            "https://stefanmaron.onrender.com/posts/al-lint-v0-1-7-code-metrics/",
+            "https://stefanmaron.onrender.com/posts/business-central-and-multiline-fields/",
+            "https://stefanmaron.onrender.com/posts/automated-export-objects-from-c-al/",
+            "https://stefanmaron.onrender.com/posts/in-vs-code-you-want-to-stage-manually/",
+            "https://stefanmaron.onrender.com/posts/msdyn365bc-code-history/",
+            "https://stefanmaron.onrender.com/posts/thoughts-about-automated-testing-in-projects/",
+            "https://stefanmaron.onrender.com/posts/can-i-copy-my-container/",
+            "https://stefanmaron.onrender.com/posts/video-series-how-do-i/",
+            "https://stefanmaron.onrender.com/posts/performance-variables-exposed-as-field-on-a-page/",
+            "https://stefanmaron.onrender.com/posts/clean-up-after-yourself-git/",
+            "https://stefanmaron.onrender.com/posts/speed-up-bc-container-creation/",
+            "https://stefanmaron.onrender.com/posts/code-review-loop-over-an-enum/",
+            "https://stefanmaron.onrender.com/posts/upgrade-a-bc-cronos-database-using-docker/",
+            "https://stefanmaron.onrender.com/posts/validate-a-commit-before-it-is-committed/",
+            "https://stefanmaron.onrender.com/posts/msdyn365bc-code-history-got-a-few-updates/",
+            "https://stefanmaron.onrender.com/posts/be-careful-with-dynamic-code/",
+            "https://stefanmaron.onrender.com/posts/businesscentral-lintercop/",
+            "https://stefanmaron.onrender.com/posts/businesscentral-lintercop-goes-vs-code/",
+            "https://stefanmaron.onrender.com/posts/updates-on-my-lintercop-project/",
+            "https://stefanmaron.onrender.com/posts/how-to-takle-all-the-challenges-with-bc-saas/",
+            "https://stefanmaron.onrender.com/posts/businesscentral-lintercop-v0-23-0/",
+            "https://stefanmaron.onrender.com/posts/changes-in-msdyn365bc-code-history/",
+            "https://stefanmaron.onrender.com/posts/business-central-lintercop-with-older-versions-of-bc/",
+            "https://stefanmaron.onrender.com/posts/bugfixes-for-lintercop-rule-lc0015/",
+            "https://stefanmaron.onrender.com/eula/",
+            "https://stefanmaron.onrender.com/privacystatement/",
+            "https://stefanmaron.onrender.com/business-central-clockify-integration/",
+            "https://stefanmaron.onrender.com/automatic-item-tracking/",
+            "https://stefanmaron.onrender.com/posts/my-journey-to-linux/",
+            "https://stefanmaron.onrender.com/posts/bc-techdays-2023/",
+            "https://stefanmaron.onrender.com/posts/golivechecklist/",
+            "https://stefanmaron.onrender.com/posts/myapproachtocustomapi/",
+            "https://stefanmaron.onrender.com/opensourcealprojects/",
+            "https://stefanmaron.onrender.com/posts/viewchangesofbasepermissionsets/",
+            "https://stefanmaron.onrender.com/posts/running_windows_11_debian_host/",
+            "https://stefanmaron.onrender.com/posts/excelreportsonprem/",
+            "https://stefanmaron.onrender.com/posts/indirectpermissions/",
+            "https://stefanmaron.onrender.com/posts/msdyn365.code.history_updates/",
+            "https://stefanmaron.onrender.com/posts/how-to-set-up-a-new-business-central-development-project/",
+            "https://stefanmaron.onrender.com/posts/blog-post-late-hotfix-handling/",
+            "https://stefanmaron.onrender.com/posts/fixing-al-debugger-linux-wayland/",
+            "https://www.twity.de/debug-httpclient-request-inside-a-container",
+            "https://www.twity.de/create-dynamics-nav-docker-images-with-a-custom-sql-database",
+            "https://www.twity.de/business-central-140-symbols",
+            "https://www.twity.de/debunking-a-decades-old-myth-in-business-central-efficiently-retrieving-grouped-data",
+            "https://www.twity.de/business-central-26-callstack-performance-improvement",
+            "https://www.twity.de/business-central-tryfunction-performance-overhead",
+            "https://www.twity.de/event-subscriber-performance",
+            "https://www.twity.de/performance-comparison-building-filters-with-textbuilder-in-al",
+            "https://katson.com/microsoft-learn-mcp-is-live/?utm_source=rss&utm_medium=rss&utm_campaign=microsoft-learn-mcp-is-live",
+            "https://katson.com/mcps-for-al-vibe-coding/?utm_source=rss&utm_medium=rss&utm_campaign=mcps-for-al-vibe-coding",
+            "https://katson.com/where-i-would-go-at-directions-emea-2025/?utm_source=rss&utm_medium=rss&utm_campaign=where-i-would-go-at-directions-emea-2025",
+            "https://katson.com/meet-custom-agents-in-business-central/?utm_source=rss&utm_medium=rss&utm_campaign=meet-custom-agents-in-business-central",
+            "https://katson.com/connect-any-agent-to-business-central/?utm_source=rss&utm_medium=rss&utm_campaign=connect-any-agent-to-business-central",
+            "https://www.mynavblog.com/2019/12/17/sending-mails-in-the-cloud/",
+            "https://www.mynavblog.com/2020/01/06/interface-with-power-automate-is-it-really-so-easy/",
+            "https://www.mynavblog.com/2020/01/19/helllo-how-is-your-english-wery-well/",
+            "https://www.mynavblog.com/2020/01/26/sometimes-it-is-a-good-idea-to-hit-the-dot/",
+            "https://www.mynavblog.com/2020/02/02/focus-on-why-instead-of-who-and-when/",
+            "https://www.mynavblog.com/2020/02/11/tiles-what-to-do-to-have-nice-bricks/",
+            "https://www.mynavblog.com/2020/02/25/new-codecops-in-the-wave-1-2020/",
+            "https://www.mynavblog.com/2020/02/29/telemetry-get-more-info-about-the-users-part-1/",
+            "https://www.mynavblog.com/2020/02/29/telemetry-get-more-info-about-the-users-part-2/",
+            "https://www.mynavblog.com/2020/05/26/all-started-with-one-tweet/",
+            "https://www.mynavblog.com/2020/06/05/automated-builds-part-9-using-azure-vm/",
+            "https://www.mynavblog.com/2020/07/06/automated-builds-part-10-using-artifacts/",
+            "https://www.mynavblog.com/2020/08/25/assisted-setup-part-1-introduction/",
+            "https://www.mynavblog.com/2020/08/27/assisted-setup-part-2-basics/",
+            "https://www.mynavblog.com/2020/09/15/assisted-setup-part-3-wizard-or-guide/",
+            "https://www.mynavblog.com/2020/09/18/common-bccontainerhelper-commands-in-one-place/",
+            "https://www.mynavblog.com/2020/10/09/small-changes-that-you-can-miss-in-version-17/",
+            "https://www.mynavblog.com/2020/10/19/from-gp-to-bc-the-smartlists/",
+            "https://www.mynavblog.com/2020/10/29/appsource-has-more-than-1000-apps-what-i-think-about-it/",
+            "https://www.mynavblog.com/2020/12/09/sending-email-from-wave-2-2020/",
+            "https://www.mynavblog.com/2020/12/21/clean-after-yourself-a-few-words-about-retention-policies/",
+            "https://www.mynavblog.com/2021/03/22/sit-relax-and-take-a-tour-a-new-help-inside-bc/",
+            "https://www.mynavblog.com/2021/04/19/quote-i-never-want-to-go-back-to-xml-permission/",
+            "https://www.mynavblog.com/2021/04/26/fast-way-to-export-page-help-url-script-inside/",
+            "https://www.mynavblog.com/2021/05/09/open-source-project-translate-the-data-with-azure-translator/",
+            "https://www.mynavblog.com/2021/08/24/telemetry-with-power-automate-how-to-get-the-report-directly-on-your-mailbox/",
+            "https://www.mynavblog.com/2021/09/03/get-more-insights-into-how-users-use-your-app-pageviews/",
+            "https://www.mynavblog.com/2021/10/15/a-bomb-dropped-by-microsoft-is-it-good-is-it-bad-i-do-not-know/",
+            "https://www.mynavblog.com/2021/10/29/directions-emea-2021-day-1/",
+            "https://www.mynavblog.com/2021/10/30/directions-emea-2021-day-2/",
+            "https://www.mynavblog.com/2021/11/01/directions-2021-day-3/",
+            "https://www.mynavblog.com/2021/11/16/small-three-dots-but-change-a-lot-few-words-about-the-no-field-on-the-page/",
+            "https://www.mynavblog.com/2022/01/04/how-to-get-failed-job-queues-directly-on-your-mail/",
+            "https://www.mynavblog.com/2022/05/04/excel-reports-something-new-in-reporting-space/",
+            "https://www.mynavblog.com/2022/07/25/al-for-beginners-workbook-version-2-0/",
+            "https://www.mynavblog.com/2022/09/19/bc-techdays-2022-event-that-you-should-not-miss/",
+            "https://www.mynavblog.com/2022/10/21/few-thoughts-about-using-old-system/",
+            "https://www.mynavblog.com/2022/12/30/no-more-conferences-this-year-what-about-2023/",
+            "https://www.mynavblog.com/2023/01/01/two-great-books-from-luc-and-andrey/",
+            "https://www.mynavblog.com/2023/02/07/get-response-from-azure-function-in-123-lines/",
+            "https://www.mynavblog.com/2023/03/26/msdyn365bc-developer-of-the-future/",
+            "https://www.mynavblog.com/2023/04/23/bcbeerinar-live-in-orlando-2023/",
+            "https://www.mynavblog.com/2023/05/03/predefined-packages-be-more-agile/",
+            "https://www.mynavblog.com/2023/05/16/the-one-thing-which-grows-by-sharing-is-knowledge/",
+            "https://www.mynavblog.com/2023/07/28/how-to-restart-all-job-queues-use-telemetry-power-platform-and-a-small-al-development/",
+            "https://www.mynavblog.com/2023/09/18/tips-for-not-only-junior-developers/",
+            "https://www.mynavblog.com/2023/11/03/my-directions-emea-2023-thoughts/",
+            "https://www.mynavblog.com/2023/12/29/development-ai-dinosaurs-and-my-father/",
+            "https://www.mynavblog.com/2024/03/26/powerapps-for-the-community-fixed-asset-counting-app/",
+            "https://vjeko.com/2025/11/09/end-of-free-backend-for-al-object-id-ninja/",
+            "https://vjeko.com/2025/11/11/al-object-id-ninja-please-register-your-intent/",
+            "https://vjeko.com/2025/11/19/al-object-id-ninja-self-hosting-vs-hassle-free-the-data-tells-a-curious-story/",
+            "https://vjeko.com/2025/12/03/a-story-about-trust-why-one-team-moved-from-private-endpoints-to-the-hosted-ninja-backend/",
+            "https://vjeko.com/2025/12/08/al-object-id-ninja-v3-0-platform-launching-on-december-15/",
+            "https://vjeko.com/2025/12/15/ninja-v3-is-live-where-we-are-and-what-comes-next/",
+            "https://vjeko.com/2026/01/07/object-ids-now-assignable-by-vs-code-agents-lm-tool-integration/",
+            "https://vjeko.com/2026/01/27/when-guids-collide-the-app-id-problem-nobody-expected/",
+            "https://vjeko.com/2026/02/02/al-object-id-ninja-mcp-server-is-here/",
+            "https://yzhums.com/70415/",
+            "https://yzhums.com/70491/",
+            "https://yzhums.com/70502/",
+            "https://yzhums.com/70481/",
+            "https://yzhums.com/70554/",
+            "https://yzhums.com/70588/",
+            "https://yzhums.com/69961/",
+            "https://yzhums.com/70630/",
+            "https://yzhums.com/70705/",
+            "https://yzhums.com/70683/",
+            "https://www.kauffmann.nl/2022/02/22/configuring-business-central-for-azure-active-directory-authentication-and-oauth-1/",
+            "https://www.kauffmann.nl/2022/02/23/configuring-business-central-for-azure-active-directory-authentication-and-oauth-2/",
+            "https://www.kauffmann.nl/2022/09/29/sending-email-via-smtp-in-business-central-online-and-on-premise/",
+            "https://www.kauffmann.nl/2022/10/14/sales-apis-returns-error-in-a-read-only-request/",
+            "https://www.kauffmann.nl/2022/12/06/prepare-for-the-new-invoice-posting-engine/",
+            "https://www.kauffmann.nl/2023/01/31/microsoft-dynamics-365-business-central-api-v2-0-reference/",
+            "https://www.kauffmann.nl/2023/05/11/how-to-get-a-reliable-xrec/",
+            "https://www.kauffmann.nl/2024/08/22/custom-apis-and-schemaversion-2-0/",
+            "https://www.kauffmann.nl/2024/12/02/httpclient-and-certificate-validation-in-business-central-v25/",
+            "https://www.kauffmann.nl/2025/09/02/oauth-library-for-the-rest-client/",
+            "https://www.hougaard.com/interactive-ui-in-al-not-only-for-microsoft/",
+            "https://www.hougaard.com/eli5-defensive-programming-in-al/",
+            "https://www.hougaard.com/from-the-wizards-lair-an-agentic-future/",
+            "https://www.hougaard.com/importing-and-parsing-an-email-with-pure-al-code/",
+            "https://www.hougaard.com/sql-support-in-business-central-yes-also-in-the-cloud/",
+            "https://www.hougaard.com/tryfunctions-are-expensive/",
+            "https://www.hougaard.com/parsing-an-email-body-with-pure-al-part-2/",
+            "https://www.hougaard.com/datetime-in-al-in-kinda-weird/",
+            "https://www.hougaard.com/how-to-survive-as-an-al-developer-in-a-ai-world/",
+            "https://www.hougaard.com/decompiling-an-app-without-al-source-code-in-business-central/",
+            "https://demiliani.com/2025/09/03/dynamics-365-business-central-controlling-the-summary-system-part/",
+            "https://demiliani.com/2025/09/10/dynamics-365-business-central-update-sandbox-environments-to-preview-versions/",
+            "https://demiliani.com/2025/09/18/dynamics-365-business-central-introducing-the-new-maskedtype-enum-field-level-property/",
+            "https://demiliani.com/2025/09/26/do-you-have-azure-functions-running-on-linux-consumption-plan-its-time-to-migrate/",
+            "https://demiliani.com/2025/09/30/dynamics-365-business-central-documenting-a-business-process-in-the-ai-era/",
+            "https://demiliani.com/2025/10/12/dynamics-365-business-central-accessing-early-access-preview-in-online-sandboxes/",
+            "https://demiliani.com/2025/10/14/dynamics-365-business-central-previewing-pdf-files-in-web-client-using-the-new-extendeddatatype-document/",
+            "https://demiliani.com/2025/10/21/dynamics-365-business-central-debugging-agent-sessions/",
+            "https://demiliani.com/2025/10/30/dynamics-365-business-central-and-azure-front-door-issue/",
+            "https://demiliani.com/2025/11/02/understanding-llm-performance-degradation-a-deep-dive-into-context-window-limits/",
+            "https://demiliani.com/2025/11/05/dynamics-365-business-central-announcing-italy-north-availability/",
+            "https://demiliani.com/2025/11/11/introducing-yampi-the-mcp-server-for-dynamics-365-business-central-administration/",
+            "https://demiliani.com/2025/11/17/evaluating-llms-performances-for-your-ai-task-presenting-my-llmevaluator/",
+            "https://demiliani.com/2025/11/19/dynamics-365-business-central-on-premises-and-sql-server-2025/",
+            "https://demiliani.com/2025/11/21/dynamics-365-business-central-use-sequential-guids-when-possible/",
+            "https://demiliani.com/2025/11/26/hacking-google-antigravity-to-develop-al-extensions-for-dynamics-365-business-central/",
+            "https://demiliani.com/2025/12/04/dynamics-365-business-central-prepare-your-extensions-to-support-the-copilot-chat/",
+            "https://demiliani.com/2025/12/10/my-mcp-server-for-dynamics-365-business-central-administration-now-supports-handling-ptes/",
+            "https://demiliani.com/2025/12/12/welcome-to-the-ccms-project/",
+            "https://demiliani.com/2025/12/22/securing-your-azure-storage-account-a-guide-to-enabling-business-central-only-access-using-network-security-perimeter/",
+            "https://demiliani.com/2025/12/29/dynamics-365-business-central-ui-performance-what-about-the-browser-and-the-local-machine/",
+            "https://demiliani.com/2026/01/05/storage-account-configuration-in-azure-functions-impact-best-practices-and-scalability/",
+            "https://demiliani.com/2026/01/14/do-you-have-applications-connecting-to-an-azure-storage-account-be-sure-to-use-tls-1-2-or-later/",
+            "https://demiliani.com/2026/01/28/dynamics-365-business-central-understanding-the-database-wait-statistics-page/",
+            "https://demiliani.com/2026/02/03/azure-functions-never-share-the-same-storage-account-between-function-apps/",
+            "https://demiliani.com/2026/02/04/azure-logic-apps-never-share-the-same-storage-account-between-different-apps/",
+            "https://demiliani.com/2026/02/06/dynamics-365-business-central-monitoring-your-customers-network-speed-from-telemetry/",
+            "https://demiliani.com/2026/02/13/dynamics-365-business-central-bcmcpproxy-vnext/",
+            "https://waldo.be/2024/11/29/uninstalled-but-not-forgotten-cleaning-up-subscription-billings-residue/",
+            "https://waldo.be/2024/12/27/depending-devops-pipelines-on-customers-current-version/",
+            "https://waldo.be/2025/01/31/microsoft-dynamics-365-2025-release-wave-1-plan-for-business-central/",
+            "https://waldo.be/2025/02/28/handling-business-central-telemetry-like-a-boss-my-azure-data-explorer-dashboard-pt-2/",
+            "https://waldo.be/2025/03/31/troubleshooting-series-ep1-admin-center-service-health/",
+            "https://waldo.be/2025/04/30/troubleshooting-series-ep2-admin-center-sessions/",
+            "https://waldo.be/2025/05/31/handling-business-central-telemetry-like-a-boss-ifacto-telemetry-pt-3/",
+            "https://waldo.be/2025/06/30/obsoleted-and-no-longer-invoked-events-in-v26-business-central/",
+            "https://waldo.be/2025/07/25/bctalent-escape-rooms/",
+            "https://waldo.be/2025/08/29/troubleshooting-series-ep3-missing-indexes/",
+            "https://waldo.be/2025/09/30/troubleshooting-series-ep4-event-recorder/",
+            "https://waldo.be/2025/10/22/i-did-a-thing-again-bc-telemetry-buddy/",
+            "https://waldo.be/2025/11/30/bc-telemetry-buddy-84-commits-later/",
+            "https://waldo.be/2025/12/24/bc-telemetry-buddy-when-your-12-year-old-accidentally-helps-you-find-a-problem/",
+            "https://waldo.be/2026/01/27/escape-room-app-gone-public/"
+          ],
+          "count": 298
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "⚙️ Test Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Categories": {
+      "main": [
+        [
+          {
+            "node": "Fetch Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Tags": {
+      "main": [
+        [
+          {
+            "node": "Get Already Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Already Sent": {
+      "main": [
+        [
+          {
+            "node": "Trigger Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Feeds": {
+      "main": [
+        [
+          {
+            "node": "Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Page Summary Chain": {
+      "main": [
+        [
+          {
+            "node": "Convert to Json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Test Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Format for API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Page Content",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Page Summary Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Json": {
+      "main": [
+        [
+          {
+            "node": "Categorize Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Post": {
+      "main": [
+        [
+          {
+            "node": "Parse Categorization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Categorization": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for API": {
+      "main": [
+        [
+          {
+            "node": "Send to API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Enrich with Source",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich with Source": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Filter New Only",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Only": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feeds": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Page Content": {
+      "main": [
+        [
+          {
+            "node": "Clean HTML Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean HTML Content": {
+      "main": [
+        [
+          {
+            "node": "Check YouTube Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check YouTube Video": {
+      "main": [
+        [
+          {
+            "node": "Needs Transcript?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Transcript?": {
+      "main": [
+        [
+          {
+            "node": "Get transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Process Transcript": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "No Transcript": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get transcript": {
+      "main": [
+        [
+          {
+            "node": "Process Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Test Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Page Summary Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Category Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Categorize Post",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "c822250f-b5ea-443f-93ae-0f9e17d357df",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b269d7837a504b7223899908bc8cb43202782c02a3720e1fbd5b315ff631065e"
+  },
+  "id": "f4W72pdbMf4ueprT",
+  "tags": [
+    {
+      "updatedAt": "2026-01-30T14:15:34.422Z",
+      "createdAt": "2026-01-30T14:15:34.422Z",
+      "id": "Dhqwt6tq7zUfL1OF",
+      "name": "Business Central"
+    },
+    {
+      "updatedAt": "2026-01-30T15:02:42.881Z",
+      "createdAt": "2026-01-30T15:02:42.881Z",
+      "id": "Ojv4wZNvNQOEHo46",
+      "name": "LangChain"
+    },
+    {
+      "updatedAt": "2026-01-30T14:15:34.439Z",
+      "createdAt": "2026-01-30T14:15:34.439Z",
+      "id": "egbtsdST5Syu9InY",
+      "name": "RSS Feed"
+    },
+    {
+      "updatedAt": "2026-01-30T14:15:34.449Z",
+      "createdAt": "2026-01-30T14:15:34.449Z",
+      "id": "h6NrgHHoFV7bsvLb",
+      "name": "Azure OpenAI"
+    }
+  ]
+}
