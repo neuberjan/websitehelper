@@ -5,6 +5,9 @@ Tooling, Workflows und Setup-Skripte für [bcbeacon.de](https://bcbeacon.de).
 ## Struktur
 
 ```
+├── deploy/                 # Deployment & Upgrade-Tools
+│   ├── reset-and-upgrade-test.sh    # Wiederholbarer Upgrade-Test (Live→Laravel)
+│   └── UPGRADE-PLAN.md             # Upgrade-Dokumentation
 ├── n8n/                    # n8n Workflow-Dateien
 │   ├── BC MVP Weekly News-10.json   # Haupt-Workflow
 │   └── _validate.py                 # Workflow-Validierung
@@ -35,6 +38,19 @@ python3 _validate.py
 
 ### Datenbank einrichten
 Schema importieren und `setup_db.php` ausführen – siehe [docs/SETUP-NETCUP.md](docs/SETUP-NETCUP.md).
+
+### Laravel Upgrade testen
+```bash
+# Kompletter Testlauf: Frische Live-DB → Laravel-Upgrade
+./deploy/reset-and-upgrade-test.sh
+
+# Nur Dry-Run (keine Daten schreiben)
+./deploy/reset-and-upgrade-test.sh --dry-run
+
+# Ohne neuen DB-Dump (schneller, nutzt bestehende Test-DB)
+./deploy/reset-and-upgrade-test.sh --skip-dump
+```
+Siehe [deploy/UPGRADE-PLAN.md](deploy/UPGRADE-PLAN.md) für den vollständigen Upgrade-Plan.
 
 ## Verbundenes Repository
 
