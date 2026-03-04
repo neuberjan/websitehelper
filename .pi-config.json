@@ -1,0 +1,17 @@
+{
+  "casaos": {
+    "url": "http://192.168.2.133:80",
+    "username": "admin",
+    "password": "***REMOVED***",
+    "auth_note": "CasaOS verwendet raw JWT-Token im Authorization-Header (OHNE 'Bearer'-Prefix)"
+  },
+  "ollama": {
+    "url": "http://192.168.2.133:11434"
+  },
+  "qdrant": {
+    "url": "http://192.168.2.133:6333"
+  },
+  "n8n": {
+    "url": "http://192.168.2.133:5678"
+  }
+}

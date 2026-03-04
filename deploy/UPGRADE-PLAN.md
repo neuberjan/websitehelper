@@ -227,7 +227,7 @@ php artisan migrate:rollback --step=5
 | Zugang          | Wert                                           |
 | --------------- | ---------------------------------------------- |
 | SSH             | `hosting236825@202.61.232.76`                  |
-| Test-Domain     | `http://hosting236825.ae84c.netcup.net`        |
+| Test-Domain     | `https://hosting236825.ae84c.netcup.net`        |
 | Test-DB         | `k349529_bcnewstest` auf `10.35.232.77:3306`  |
 | DB-User (Test)  | `k349529_bcnewstest`                           |
 | httpdocs        | `/hosting236825.ae84c.netcup.net/httpdocs`     |

@@ -38,7 +38,7 @@ TEST_PASS='***REMOVED***'
 
 HTTPDOCS="/hosting236825.ae84c.netcup.net/httpdocs"
 COMPOSER="/local/bin/composer"
-TEST_DOMAIN="http://hosting236825.ae84c.netcup.net"
+TEST_DOMAIN="https://hosting236825.ae84c.netcup.net"
 
 # Laravel-Repo Pfad (Standard: neben websitehelper)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

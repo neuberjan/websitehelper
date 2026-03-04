@@ -1,0 +1,202 @@
+{
+  "name": "BC Beacon Chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "chat-trigger",
+      "name": "Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [784, 832],
+      "webhookId": "bcbeacon-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Du bist der BC Beacon Assistent - eine Suchmaschine fuer kuratierte Business Central News mit ueber 250 Artikeln.\n\nWICHTIG:\n- Du MUSST bei JEDER Frage das Tool 'bc_beacon_suche' verwenden!\n- Antworte NIEMALS aus deinem eigenen Wissen.\n- Zeige ALLE zurueckgegebenen Ergebnisse an (bis zu 10). Fasse NICHT zusammen oder kuerze die Liste!\n- Wenn du bei der ersten Suche wenig findest, suche NOCHMAL mit anderen Begriffen.\n\nSuch-Strategie:\n- Thema (z.B. 'AL', 'Performance', 'KI', 'Docker'): Suche mit dem Thema UND verwandten Begriffen\n- Autor (z.B. 'hougaard', 'vjeko'): Suche nach dem Namen\n- Kalenderwoche: Suche nach 'KW' + Nummer\n- Bei kurzen Begriffen wie 'AL': Suche mit erweiterten Begriffen wie 'AL Programmierung Business Central Entwicklung'\n\nAntwort-Format - zeige JEDEN gefundenen Post so:\n\n1. **[Titel]**\n   Zusammenfassung des Posts\n   Quelle: [URL]\n   Datum: [Datum] | Kategorie: [Kategorie] | Tags: [Tags]\n\n2. **[Naechster Titel]**\n   ...usw. fuer ALLE Ergebnisse\n\nAntworte auf Deutsch, es sei denn der Nutzer fragt auf Englisch.\nWenn die Suche keine Ergebnisse liefert, sage das ehrlich und schlage alternative Suchbegriffe vor."
+        }
+      },
+      "id": "agent",
+      "name": "BC Beacon Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1008, 832]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4.1",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "openrouter-chat",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [880, 1040]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "fromInput",
+        "windowSize": 10
+      },
+      "id": "memory",
+      "name": "Gespraechsgedaechtnis",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [1008, 1056]
+    },
+    {
+      "parameters": {
+        "name": "bc_beacon_suche",
+        "description": "Durchsucht die BC Beacon Wissensdatenbank mit Vektorsuche nach Business Central News und Artikeln. WICHTIG: Formuliere die Suchanfrage als ausfuehrlichen Satz mit mehreren relevanten Begriffen, nicht nur ein einzelnes Wort. Beispiel: Statt nur 'AL' suche nach 'AL Programmierung Business Central Entwicklung Code Extensions'. Statt nur 'KI' suche nach 'Kuenstliche Intelligenz AI Copilot Business Central'. Je mehr relevante Begriffe, desto bessere Ergebnisse. Gibt bis zu 10 Posts mit Titel, Zusammenfassung, URL, Datum, Kategorie und Tags zurueck.",
+        "topK": 10
+      },
+      "id": "vector-store-tool",
+      "name": "BC Beacon Suche",
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1,
+      "position": [1184, 1056]
+    },
+    {
+      "parameters": {
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "bcbeacon_posts",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "qdrant-store",
+      "name": "Qdrant Abruf",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [1040, 1280]
+    },
+    {
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "id": "embeddings-ollama",
+      "name": "Ollama Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [1040, 1424]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4.1-mini",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "openrouter-search",
+      "name": "OpenRouter Suche Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [1184, 1264]
+    },
+    {
+      "parameters": {
+        "content": "## BC Beacon Chatbot\n\n**Architektur:**\n```\nChat -> Agent (GPT-4.1 via OpenRouter)\n  |-- Memory (10 Nachrichten)\n  |-- Tool: BC Beacon Suche (topK=8)\n           |-- Qdrant (bcbeacon_posts)\n                    |-- bge-m3 (Ollama)\n```\n\n**Nach Import - Credentials zuweisen:**\n1. OpenRouter Chat Model -> OpenRouter account\n2. Qdrant Abruf -> QdrantApi account\n3. Ollama Embeddings -> Ollama account\n\n**Beispiel-Fragen:**\n- Was gibt es Neues zu AL Performance?\n- Zeig mir Posts ueber KI in BC\n- Welche Artikel gibt es von hougaard?\n- Was wurde in KW7 2026 veroeffentlicht?",
+        "height": 380,
+        "width": 400
+      },
+      "id": "note",
+      "name": "Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1488, 832]
+    }
+  ],
+  "connections": {
+    "Chat": {
+      "main": [
+        [
+          {
+            "node": "BC Beacon Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "BC Beacon Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gespraechsgedaechtnis": {
+      "ai_memory": [
+        [
+          {
+            "node": "BC Beacon Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BC Beacon Suche": {
+      "ai_tool": [
+        [
+          {
+            "node": "BC Beacon Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Abruf": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "BC Beacon Suche",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Abruf",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Suche Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "BC Beacon Suche",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "BC Beacon" },
+    { "name": "RAG" },
+    { "name": "Chatbot" }
+  ]
+}

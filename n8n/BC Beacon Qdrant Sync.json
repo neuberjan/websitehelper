@@ -1,0 +1,320 @@
+{
+  "name": "BC Beacon → Qdrant Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [1],
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Montags 08:00 Uhr",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://bcbeacon.de/api/posts.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-posts",
+      "name": "Alle Posts laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Alle Items in ein einziges Item mit Array zusammenfassen,\n// damit der nachfolgende Qdrant-Scroll nur 1x läuft.\nconst items = $input.all();\nreturn [{ json: { allPosts: items.map(i => i.json) } }];\n"
+      },
+      "id": "aggregate-posts",
+      "name": "Posts zusammenfassen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.2.133:6333/collections/bcbeacon_posts/points/scroll",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"limit\": 10000, \"with_vector\": false, \"with_payload\": [\"metadata\"] }",
+        "options": {}
+      },
+      "id": "http-qdrant-scroll",
+      "name": "Vorhandene URLs aus Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Bestimmt welche Posts neu sind (noch nicht in Qdrant).\n\nconst aggregated = $('Posts zusammenfassen').first().json;\nconst allPosts = aggregated.allPosts ?? [];\n\nif (allPosts.length === 0) {\n  throw new Error('Keine Posts aus der API erhalten');\n}\n\nconst qdrantResponse = $input.first().json;\nconst existingUrls = new Set();\n\ntry {\n  const points = qdrantResponse?.result?.points ?? [];\n  for (const point of points) {\n    const p = point?.payload ?? {};\n    const url = p?.metadata?.source_url ?? p?.source_url ?? '';\n    if (url) existingUrls.add(url);\n  }\n} catch (_) {}\n\nconsole.log(`Qdrant: ${existingUrls.size} bekannte URLs | API: ${allPosts.length} Posts`);\n\nconst newPosts = allPosts.filter(post => {\n  const url = post.source_url ?? post.sourceUrl ?? '';\n  return url && !existingUrls.has(url);\n});\n\nconsole.log(`→ ${newPosts.length} neue Posts zum Indexieren.`);\n\nif (newPosts.length === 0) {\n  return [{ json: { newPostsCount: 0, newPosts: [] } }];\n}\n\nreturn [{ json: { newPostsCount: newPosts.length, newPosts } }];\n"
+      },
+      "id": "code-diff",
+      "name": "Neue Posts ermitteln",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-new-posts",
+              "leftValue": "={{ $json.newPostsCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-new-posts",
+      "name": "Neue Posts vorhanden?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Posts aufbereiten: text + Metadaten als separate Felder.\nconst { newPosts } = $input.first().json;\n\nreturn newPosts.map(post => {\n  const tags = Array.isArray(post.tags) ? post.tags : [];\n  const tagStr = tags.join(', ');\n  const sourceUrl = post.source_url ?? post.sourceUrl ?? '';\n\n  const text = [\n    post.title ?? '',\n    post.summary ?? '',\n    tagStr ? `Tags: ${tagStr}` : ''\n  ].filter(Boolean).join('\\n\\n');\n\n  return {\n    json: {\n      text,\n      meta_title:      post.title ?? '',\n      meta_summary:    post.summary ?? '',\n      meta_source:     post.source ?? '',\n      meta_source_url: sourceUrl,\n      meta_category:   post.category ?? '',\n      meta_date:       post.date ?? '',\n      meta_tags:       tagStr,\n      meta_kw:         String(post.kw ?? ''),\n      meta_year:       String(post.year ?? '')\n    }\n  };\n});\n"
+      },
+      "id": "code-prepare",
+      "name": "Dokumente aufbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-text-field",
+              "name": "text",
+              "type": "string",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "set-text",
+      "name": "Set text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "bcbeacon_posts",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "qdrant-insert",
+      "name": "In Qdrant speichern",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [2000, 200],
+      "credentials": {
+        "qdrantApi": {
+          "id": "qdrant-local",
+          "name": "Qdrant Local"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "id": "embeddings-ollama",
+      "name": "Ollama Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [1900, 420],
+      "credentials": {
+        "ollamaApi": {
+          "id": "ollama-local",
+          "name": "Ollama Local"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              { "name": "title",      "value": "={{ $('Dokumente aufbereiten').item.json.meta_title }}" },
+              { "name": "summary",    "value": "={{ $('Dokumente aufbereiten').item.json.meta_summary }}" },
+              { "name": "source",     "value": "={{ $('Dokumente aufbereiten').item.json.meta_source }}" },
+              { "name": "source_url", "value": "={{ $('Dokumente aufbereiten').item.json.meta_source_url }}" },
+              { "name": "category",   "value": "={{ $('Dokumente aufbereiten').item.json.meta_category }}" },
+              { "name": "date",       "value": "={{ $('Dokumente aufbereiten').item.json.meta_date }}" },
+              { "name": "tags",       "value": "={{ $('Dokumente aufbereiten').item.json.meta_tags }}" },
+              { "name": "kw",         "value": "={{ $('Dokumente aufbereiten').item.json.meta_kw }}" },
+              { "name": "year",       "value": "={{ $('Dokumente aufbereiten').item.json.meta_year }}" }
+            ]
+          }
+        }
+      },
+      "id": "document-loader",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [2100, 420]
+    },
+    {
+      "parameters": {
+        "chunkSize": 2000,
+        "chunkOverlap": 0,
+        "options": {}
+      },
+      "id": "text-splitter",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [2100, 620]
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Setup – einmalig nötig\n\n**1. Credentials anlegen:**\n- `Qdrant Local` → URL: `http://192.168.2.133:6333`\n- `Ollama Local` → URL: `http://192.168.2.133:11434`\n\n**2. Ollama Modell:**\n```\nollama pull bge-m3\n```\n\n**3. Collection** wird automatisch angelegt.\n\n---\n\n**Pattern (aus n8n Templates):**\n```\nAPI → Aggregate → Qdrant Scroll → Diff\n  → IF > 0 → Code (Aufbereiten)\n    → Set text (NUR text Feld!)\n      → Qdrant Vector Store\n        ← Ollama Embeddings\n        ← Document Loader\n          (Metadata via $('Aufbereiten'))\n          ← Text Splitter\n```\n\n**Trigger:** Jeden Montag 08:00 Uhr\n**Dedup:** Scroll + URL-Vergleich vor Insert\n\n**WICHTIG:** Der 'Set text' Node gibt NUR\ndas text-Feld weiter. So erzeugt der\nDocument Loader genau 1 Dokument pro Post.\nMetadata werden per Expression vom\nCode-Node geholt.",
+        "height": 520,
+        "width": 440
+      },
+      "id": "note",
+      "name": "Setup-Hinweise",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, 480]
+    }
+  ],
+  "connections": {
+    "Montags 08:00 Uhr": {
+      "main": [
+        [
+          { "node": "Alle Posts laden", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Alle Posts laden": {
+      "main": [
+        [
+          { "node": "Posts zusammenfassen", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Posts zusammenfassen": {
+      "main": [
+        [
+          { "node": "Vorhandene URLs aus Qdrant", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Vorhandene URLs aus Qdrant": {
+      "main": [
+        [
+          { "node": "Neue Posts ermitteln", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Neue Posts ermitteln": {
+      "main": [
+        [
+          { "node": "Neue Posts vorhanden?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Neue Posts vorhanden?": {
+      "main": [
+        [
+          { "node": "Dokumente aufbereiten", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Dokumente aufbereiten": {
+      "main": [
+        [
+          { "node": "Set text", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Set text": {
+      "main": [
+        [
+          { "node": "In Qdrant speichern", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Ollama Embeddings": {
+      "ai_embedding": [
+        [
+          { "node": "In Qdrant speichern", "type": "ai_embedding", "index": 0 }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          { "node": "In Qdrant speichern", "type": "ai_document", "index": 0 }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          { "node": "Default Data Loader", "type": "ai_textSplitter", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "BC Beacon" },
+    { "name": "RAG" }
+  ]
+}
