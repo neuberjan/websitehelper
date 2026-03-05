@@ -1,0 +1,437 @@
+{
+  "name": "BC Beacon TTS",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "fa47c8d0-d721-4848-995a-5d343492e864",
+      "name": "Manueller Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        4400,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Vorherige KW berechnen (ISO 8601)\n// Wir gehen 7 Tage zurueck, damit Montag-Ausfuehrung die abgeschlossene Woche zusammenfasst\nconst now = new Date();\nnow.setDate(now.getDate() - 7);\nconst tmp = new Date(now.getFullYear(), now.getMonth(), now.getDate());\ntmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));\nconst jan4 = new Date(tmp.getFullYear(), 0, 4);\nconst kw = 1 + Math.round(((tmp - jan4) / 86400000 - 3 + ((jan4.getDay() + 6) % 7)) / 7);\nconst year = tmp.getFullYear();\n\nreturn [{ json: { kw, year } }];"
+      },
+      "id": "862b4701-8710-45c2-aeb6-eac40af3c42b",
+      "name": "KW berechnen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4560,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const kw = $json.kw;\nconst year = $json.year;\n\n// Pruefen ob bereits eine Zusammenfassung mit Audio existiert\ntry {\n  const data = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://bcbeacon.de/api/weekly_summary.php?kw=${kw}&year=${year}`,\n    json: true,\n  });\n  if (data && data.has_audio) {\n    console.log(`KW ${kw}/${year}: Audio bereits vorhanden, ueberspringe.`);\n    return [];\n  }\n} catch (e) {\n  // 404 oder Fehler = existiert noch nicht, weiter machen\n}\n\nreturn [{ json: { kw, year } }];"
+      },
+      "id": "2ca4a48a-0f6a-4d16-95b6-f10f624c385b",
+      "name": "Duplikat pruefen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://bcbeacon.de/api/posts.php?kw={{ $json.kw }}&year={{ $json.year }}",
+        "options": {}
+      },
+      "id": "1b2d5340-50c1-4483-82b1-e27a9fbb3111",
+      "name": "Posts laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4848,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// HTTP Request Node gibt JSON-Array als einzelne Items zurueck\nconst posts = $input.all().map(item => item.json);\nconst kw = $(\"KW berechnen\").first().json.kw;\nconst year = $(\"KW berechnen\").first().json.year;\n\nif (!posts || posts.length === 0) {\n  // Keine Posts = Workflow sauber beenden (kein Fehler)\n  console.log(\"Keine Posts fuer KW \" + kw + \" \" + year + \" gefunden. Ueberspringe TTS.\");\n  return [];\n}\n\nlet text = \"\";\nfor (const post of posts) {\n  text += \"## \" + post.title + \"\\n\";\n  text += \"Quelle: \" + post.source + \"\\n\";\n  if (post.tags && post.tags.length > 0) {\n    text += \"Tags: \" + post.tags.join(\", \") + \"\\n\";\n  }\n  text += post.summary + \"\\n\\n\";\n}\n\nreturn [{ json: { kw, year, postsText: text, postCount: posts.length } }];"
+      },
+      "id": "7eb9fa30-7496-48bd-a33a-e1c3195ac787",
+      "name": "Posts aufbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5008,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.postsText }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Du bist ein erfahrener Radio-Moderator fuer Business Central News. Deine Aufgabe ist es, die bereitgestellten Artikel in einen natuerlichen, fluessigen Sprechtext zusammenzufassen.\n\nVorgaben fuer den Text:\n1. Einstieg: Beginne charmant, zum Beispiel mit: \"Willkommen zum BC Beacon Wochenueberblick! Diese Woche gibt es viele interessante Themen\" oder \"Schoen, dass du wieder zuhoerst - heute schauen wir uns an...\".\n2. Stil: Schreibe keine Listen oder Aufzaehlungen. Nutze verbindende Saetze, damit der Text wie aus einem Guss klingt.\n3. Zielgruppe: Formuliere ansprechend und lebendig, als wuerdest du eine private Sprachnachricht fuer einen Freund aufnehmen.\n4. Ende: Schliesse mit einem kurzen Abschluss wie \"Das wars fuer diese Woche - bis zum naechsten Mal!\" ab.\n5. Laenge: Der Text sollte zwischen 2-4 Minuten Sprechzeit haben (ca. 400-800 Woerter).\n\nHier sind die Artikel-Inhalte, die du zusammenfassen sollst:"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        5168,
+        192
+      ],
+      "id": "784c7d3c-0f75-404e-9973-786f5aeb73df",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        5168,
+        400
+      ],
+      "id": "ba2b9137-9777-4500-9728-19619a44eb29",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RTrWqEQmbddTAwoi",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const llmOutput = $input.first().json.text || $input.first().json.response;\nconst kwData = $(\"Posts aufbereiten\").first().json;\n\nreturn [{ json: {\n  kw: kwData.kw,\n  year: kwData.year,\n  summary_text: llmOutput,\n  postCount: kwData.postCount\n} }];"
+      },
+      "id": "f2e856bb-de91-4e80-b143-88188f75119e",
+      "name": "Text + Metadaten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5456,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Edge TTS kann Audio als JSON (.json.audio) oder Binary (.binary.data) liefern\nlet audioBase64 = $input.first().json.audio;\nif (!audioBase64 && $input.first().binary && $input.first().binary.data) {\n  audioBase64 = $input.first().binary.data.data;\n}\nif (!audioBase64) {\n  throw new Error('Kein Audio vom TTS-Node erhalten. Bitte TTS-Output pruefen.');\n}\nconst meta = $(\"Text + Metadaten\").first().json;\n\nreturn [{ json: {\n  kw: meta.kw,\n  year: meta.year,\n  summary_text: meta.summary_text,\n  audio_base64: audioBase64\n} }];"
+      },
+      "id": "27419f34-e276-49e9-a36d-4d770e90d234",
+      "name": "API-Payload vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5888,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bcbeacon.de/api/weekly_summary.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ kw: $json.kw, year: $json.year, summary_text: $json.summary_text, audio_base64: $json.audio_base64 }) }}",
+        "options": {}
+      },
+      "id": "7ae6d41b-0aa4-4ffd-8815-713ce7598356",
+      "name": "In DB speichern",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6112,
+        192
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7xAg7RMma7Lu4Cma",
+          "name": "BC Beacon API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const audioBase64 = $(\"API-Payload vorbereiten\").first().json.audio_base64;\n\nconst items = [{\n  json: $(\"In DB speichern\").first().json,\n  binary: {\n    data: await this.helpers.prepareBinaryData(\n      Buffer.from(audioBase64, \"base64\"),\n      \"audio.mp3\",\n      \"audio/mpeg\"\n    )\n  }\n}];\nreturn items;"
+      },
+      "id": "e7028f15-a728-442a-8d68-6065adf41d7e",
+      "name": "Base64 zu Audio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6336,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendAudio",
+        "chatId": "7955006208",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=BC Beacon KW{{ $(\"Text + Metadaten\").first().json.kw }} {{ $(\"Text + Metadaten\").first().json.year }} - Wochenueberblick"
+        }
+      },
+      "id": "f6106d87-2686-4571-a7c3-4a6ac344f51a",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        6560,
+        192
+      ],
+      "webhookId": "e84de424-6053-4852-acc6-60e651c5c60d",
+      "credentials": {
+        "telegramApi": {
+          "id": "27rH8k48qxNZfETw",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        4384,
+        192
+      ],
+      "id": "c3f0d1e9-e986-4bb8-9abd-9fdd86b50c29",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "voice": {
+          "__rl": true,
+          "value": "hpp4J3VqNfWAUOO0d1Us",
+          "mode": "list",
+          "cachedResultName": "Bella - Professional, Bright, Warm"
+        },
+        "text": "={{ $json.summary_text }}",
+        "additionalOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        5664,
+        192
+      ],
+      "id": "a8accc18-8334-494b-b0a4-6b62db5e55ea",
+      "name": "Convert text to speech",
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "6JrTVClynnG80qo6",
+          "name": "ElevenLabs account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manueller Start": {
+      "main": [
+        [
+          {
+            "node": "KW berechnen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KW berechnen": {
+      "main": [
+        [
+          {
+            "node": "Duplikat pruefen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplikat pruefen": {
+      "main": [
+        [
+          {
+            "node": "Posts laden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts laden": {
+      "main": [
+        [
+          {
+            "node": "Posts aufbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts aufbereiten": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Text + Metadaten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text + Metadaten": {
+      "main": [
+        [
+          {
+            "node": "Convert text to speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API-Payload vorbereiten": {
+      "main": [
+        [
+          {
+            "node": "In DB speichern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "In DB speichern": {
+      "main": [
+        [
+          {
+            "node": "Base64 zu Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Base64 zu Audio": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "KW berechnen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert text to speech": {
+      "main": [
+        [
+          {
+            "node": "API-Payload vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "78bb7878-86a9-490e-91ba-448532d6e3df",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b269d7837a504b7223899908bc8cb43202782c02a3720e1fbd5b315ff631065e"
+  },
+  "id": "lAgU2V5Uj436RQjE",
+  "tags": [
+    {
+      "updatedAt": "2026-01-30T14:15:34.422Z",
+      "createdAt": "2026-01-30T14:15:34.422Z",
+      "id": "Dhqwt6tq7zUfL1OF",
+      "name": "Business Central"
+    },
+    {
+      "updatedAt": "2026-01-30T15:02:42.881Z",
+      "createdAt": "2026-01-30T15:02:42.881Z",
+      "id": "Ojv4wZNvNQOEHo46",
+      "name": "LangChain"
+    },
+    {
+      "updatedAt": "2026-01-30T14:15:34.439Z",
+      "createdAt": "2026-01-30T14:15:34.439Z",
+      "id": "egbtsdST5Syu9InY",
+      "name": "RSS Feed"
+    },
+    {
+      "updatedAt": "2026-01-30T14:15:34.449Z",
+      "createdAt": "2026-01-30T14:15:34.449Z",
+      "id": "h6NrgHHoFV7bsvLb",
+      "name": "Azure OpenAI"
+    }
+  ]
+}
