@@ -1,6 +1,40 @@
 # Zugangsdaten & Infrastruktur-Übersicht
 
-> **ACHTUNG:** Diese Datei enthält Passwörter. Nicht committen / nicht öffentlich teilen!
+> **HINWEIS:** Alle Passwörter sind in der lokalen Datei `~/.bcbeacon-secrets` gespeichert.
+> Diese Datei hier enthält NUR die Infrastruktur-Struktur — keine echten Passwörter.
+
+---
+
+## Lokale Secrets-Datei einrichten
+
+Erstelle `~/.bcbeacon-secrets` mit folgendem Inhalt:
+
+```bash
+# Raspberry Pi / CasaOS
+export PI_PASS='<HIER_EINTRAGEN>'
+
+# FRITZ.NAS
+export NAS_BACKUP_PASS='<HIER_EINTRAGEN>'
+export NAS_COPILOT_PASS='<HIER_EINTRAGEN>'
+
+# Netcup Server
+export SSH_PASS='<HIER_EINTRAGEN>'
+
+# Datenbank
+export LIVE_DB_PASS='<HIER_EINTRAGEN>'
+export TEST_DB_PASS='<HIER_EINTRAGEN>'
+
+# SMTP (Newsletter)
+export SMTP_PASS='<HIER_EINTRAGEN>'
+
+# Laravel Admin
+export ADMIN_PASS='<HIER_EINTRAGEN>'
+
+# API Key
+export API_KEY='<HIER_EINTRAGEN>'
+```
+
+Laden: `source ~/.bcbeacon-secrets`
 
 ---
 
@@ -15,14 +49,11 @@
 | Benutzer | Passwort | Zweck | sudo |
 |----------|----------|-------|------|
 | `jan` | *(nur Jan bekannt)* | Admin-Zugang (manuell) | ja |
-| `copilot` | `***REMOVED***` | Copilot-Automatisierung (Scripts, Backups) | ja |
+| `copilot` | `$PI_PASS` | Copilot-Automatisierung (Scripts, Backups) | ja |
 
 ```bash
 # Copilot-SSH
-sshpass -p '***REMOVED***' ssh copilot@192.168.2.133
-
-# Oder (interaktiv)
-ssh copilot@192.168.2.133
+sshpass -p "$PI_PASS" ssh copilot@192.168.2.133
 ```
 
 ### CasaOS Web-UI & API
@@ -31,18 +62,14 @@ ssh copilot@192.168.2.133
 |-------------|------|
 | URL | `http://192.168.2.133:80` |
 | Benutzername | `admin` |
-| Passwort | `***REMOVED***` |
+| Passwort | `$PI_PASS` |
 | Auth-Methode | JWT-Token im `Authorization`-Header (OHNE `Bearer`-Prefix) |
 
 ```bash
 # Login → Token holen
 curl -s -X POST http://192.168.2.133:80/v1/users/login \
   -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"***REMOVED***"}'
-
-# API-Aufrufe mit Token
-curl -s http://192.168.2.133:80/v2/app_management/compose \
-  -H "Authorization: <TOKEN>"
+  -d "{\"username\":\"admin\",\"password\":\"$PI_PASS\"}"
 ```
 
 ### Installierte Container-Apps
@@ -70,15 +97,15 @@ Weitere Apps in `/DATA/AppData/`:
 
 | Benutzer | Passwort | Zweck |
 |----------|----------|-------|
-| `BackupDocker` | `***REMOVED***` | Automatisierte Backups (Pi → NAS) |
-| `copilot` | `***REMOVED***` | Copilot-Arbeitsdateien (Exports, Temp, Logs) |
+| `BackupDocker` | `$NAS_BACKUP_PASS` | Automatisierte Backups (Pi → NAS) |
+| `copilot` | `$NAS_COPILOT_PASS` | Copilot-Arbeitsdateien (Exports, Temp, Logs) |
 
 ```bash
 # NAS als BackupDocker mounten (für Backups)
-mount_smbfs //BackupDocker:***REMOVED***@fritz.nas/BackupDocker /mnt/backup
+mount_smbfs //BackupDocker:${NAS_BACKUP_PASS}@fritz.nas/BackupDocker /mnt/backup
 
 # NAS als Copilot mounten (für Arbeitsdateien)
-mount_smbfs //copilot:***REMOVED***@fritz.nas/FRITZ.NAS /Volumes/FRITZ.NAS
+mount_smbfs //copilot:${NAS_COPILOT_PASS}@fritz.nas/FRITZ.NAS /Volumes/FRITZ.NAS
 ```
 
 ---
@@ -99,7 +126,7 @@ mount_smbfs //copilot:***REMOVED***@fritz.nas/FRITZ.NAS /Volumes/FRITZ.NAS
 ### Manuelles Backup (vom Mac aus)
 
 ```bash
-sshpass -p '***REMOVED***' ssh copilot@192.168.2.133 "bash /home/copilot/backup-docker.sh"
+sshpass -p "$PI_PASS" ssh copilot@192.168.2.133 "bash /home/copilot/backup-docker.sh"
 ```
 
 - Script auf dem Pi: `/home/copilot/backup-docker.sh`
@@ -110,20 +137,12 @@ sshpass -p '***REMOVED***' ssh copilot@192.168.2.133 "bash /home/copilot/backup-
 
 ### Tägliches Backup per Cron (optional)
 
-Falls gewünscht, auf dem Pi als copilot-User einrichten:
-
 ```bash
-# SSH auf den Pi
-sshpass -p '***REMOVED***' ssh copilot@192.168.2.133
-
-# Crontab öffnen
+sshpass -p "$PI_PASS" ssh copilot@192.168.2.133
 crontab -e
-
-# Täglich um 03:00 Uhr Backup ausführen:
+# Täglich um 03:00 Uhr:
 0 3 * * * /home/copilot/backup-docker.sh >> /home/copilot/backup-cron.log 2>&1
 ```
-
----
 
 ---
 
@@ -131,7 +150,7 @@ crontab -e
 
 - **IP:** `202.61.232.76`
 - **SSH-User:** `hosting236825`
-- **SSH-Passwort:** `***REMOVED***`
+- **SSH-Passwort:** `$SSH_PASS`
 - **DocumentRoot:** `/hosting236825.ae84c.netcup.net/httpdocs/`
 - **Test-Domain:** `https://hosting236825.ae84c.netcup.net`
 - **Live-Domain:** `https://bcbeacon.de`
@@ -143,7 +162,7 @@ crontab -e
 | **Host** | `10.35.232.77:3306` |
 | **Name** | `k349529_bcnewstest` |
 | **User** | `k349529_bcnewstest` |
-| **Passwort** | `***REMOVED***` |
+| **Passwort** | `$TEST_DB_PASS` |
 
 ### Live-Datenbank
 
@@ -152,7 +171,7 @@ crontab -e
 | **Host** | `10.35.232.77:3306` |
 | **Name** | `k349529_bcnews` |
 | **User** | `k349529_bcnews` |
-| **Passwort** | `***REMOVED***` |
+| **Passwort** | `$LIVE_DB_PASS` |
 
 ### SMTP (Newsletter)
 
@@ -160,7 +179,7 @@ crontab -e
 |-------------|------|
 | **Host** | `mxe84e.netcup.net:465` |
 | **User** | `newsletter@bcbeacon.de` |
-| **Passwort** | `***REMOVED***` |
+| **Passwort** | `$SMTP_PASS` |
 | **Encryption** | SSL |
 
 ### Laravel Admin
@@ -168,15 +187,15 @@ crontab -e
 | Eigenschaft | Wert |
 |-------------|------|
 | **E-Mail** | `admin@bcbeacon.de` |
-| **Passwort** | `***REMOVED***` |
+| **Passwort** | `$ADMIN_PASS` |
 
 ### API-Key
 
 ```
-***REMOVED***
+$API_KEY
 ```
 
-**Verwendung:** Header `X-API-Key: ***REMOVED***`
+**Verwendung:** Header `X-API-Key: $API_KEY`
 
 ---
 
@@ -186,5 +205,4 @@ crontab -e
 - **`copilot`** → Für alle automatisierten Copilot-Aktionen (SSH, Backups, Scripts)
 - **`BackupDocker`** → Nur für Backup-Transfers zum NAS
 - **`copilot` (NAS)** → Für Copilot-Arbeitsdateien auf dem NAS
-- **Netcup-Passwörter** → Nur in dieser Datei, nicht in Git committen
-- Keine Passwörter in Git committen (`.gitignore` prüfen!)
+- Alle Passwörter in `~/.bcbeacon-secrets` speichern, nie in Git committen!

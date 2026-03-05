@@ -2,7 +2,7 @@
   "casaos": {
     "url": "http://192.168.2.133:80",
     "username": "admin",
-    "password": "***REMOVED***",
+    "password": "SET_IN_ENV_OR_CREDENTIALS_FILE",
     "auth_note": "CasaOS verwendet raw JWT-Token im Authorization-Header (OHNE 'Bearer'-Prefix)"
   },
   "ollama": {

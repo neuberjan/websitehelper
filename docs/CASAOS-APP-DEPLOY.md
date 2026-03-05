@@ -18,20 +18,20 @@ CasaOS registriert Apps automatisch, wenn eine `docker-compose.yml` unter `/var/
 
 ```bash
 # Verzeichnis anlegen
-echo '***REMOVED***' | sudo -S mkdir -p /var/lib/casaos/apps/<app-name>
+echo '<PI_PASS>' | sudo -S mkdir -p /var/lib/casaos/apps/<app-name>
 
 # Compose-Datei hineinkopieren (vom Mac aus)
-cat docker-compose-<app-name>.yml | sshpass -p '***REMOVED***' ssh copilot@192.168.2.133 \
-  "cat > /tmp/compose.yml && echo '***REMOVED***' | sudo -S cp /tmp/compose.yml /var/lib/casaos/apps/<app-name>/docker-compose.yml"
+cat docker-compose-<app-name>.yml | sshpass -p '<PI_PASS>' ssh copilot@192.168.2.133 \
+  "cat > /tmp/compose.yml && echo '<PI_PASS>' | sudo -S cp /tmp/compose.yml /var/lib/casaos/apps/<app-name>/docker-compose.yml"
 
 # Ownership korrigieren (root muss Owner sein)
-echo '***REMOVED***' | sudo -S chown -R root:root /var/lib/casaos/apps/<app-name>
+echo '<PI_PASS>' | sudo -S chown -R root:root /var/lib/casaos/apps/<app-name>
 ```
 
 ### 2. Container starten
 
 ```bash
-echo '***REMOVED***' | sudo -S docker compose \
+echo '<PI_PASS>' | sudo -S docker compose \
   -f /var/lib/casaos/apps/<app-name>/docker-compose.yml up -d
 ```
 
@@ -40,7 +40,7 @@ echo '***REMOVED***' | sudo -S docker compose \
 Damit die App in der CasaOS-UI erscheint:
 
 ```bash
-echo '***REMOVED***' | sudo -S systemctl restart casaos-app-management.service
+echo '<PI_PASS>' | sudo -S systemctl restart casaos-app-management.service
 ```
 
 Danach erscheint die App in der CasaOS-UI unter `http://192.168.2.133:80`.
@@ -50,13 +50,13 @@ Danach erscheint die App in der CasaOS-UI unter `http://192.168.2.133:80`.
 ## Alles in einem Befehl (vom Mac aus)
 
 ```bash
-cat docker-compose-<app-name>.yml | sshpass -p '***REMOVED***' ssh copilot@192.168.2.133 "
+cat docker-compose-<app-name>.yml | sshpass -p '<PI_PASS>' ssh copilot@192.168.2.133 "
   cat > /tmp/compose.yml
-  echo '***REMOVED***' | sudo -S mkdir -p /var/lib/casaos/apps/<app-name>
-  echo '***REMOVED***' | sudo -S cp /tmp/compose.yml /var/lib/casaos/apps/<app-name>/docker-compose.yml
-  echo '***REMOVED***' | sudo -S chown -R root:root /var/lib/casaos/apps/<app-name>
-  echo '***REMOVED***' | sudo -S docker compose -f /var/lib/casaos/apps/<app-name>/docker-compose.yml up -d
-  echo '***REMOVED***' | sudo -S systemctl restart casaos-app-management.service
+  echo '<PI_PASS>' | sudo -S mkdir -p /var/lib/casaos/apps/<app-name>
+  echo '<PI_PASS>' | sudo -S cp /tmp/compose.yml /var/lib/casaos/apps/<app-name>/docker-compose.yml
+  echo '<PI_PASS>' | sudo -S chown -R root:root /var/lib/casaos/apps/<app-name>
+  echo '<PI_PASS>' | sudo -S docker compose -f /var/lib/casaos/apps/<app-name>/docker-compose.yml up -d
+  echo '<PI_PASS>' | sudo -S systemctl restart casaos-app-management.service
 "
 ```
 
@@ -65,10 +65,10 @@ cat docker-compose-<app-name>.yml | sshpass -p '***REMOVED***' ssh copilot@192.1
 ## App entfernen
 
 ```bash
-sshpass -p '***REMOVED***' ssh copilot@192.168.2.133 "
-  echo '***REMOVED***' | sudo -S docker compose -f /var/lib/casaos/apps/<app-name>/docker-compose.yml down
-  echo '***REMOVED***' | sudo -S rm -rf /var/lib/casaos/apps/<app-name>
-  echo '***REMOVED***' | sudo -S systemctl restart casaos-app-management.service
+sshpass -p '<PI_PASS>' ssh copilot@192.168.2.133 "
+  echo '<PI_PASS>' | sudo -S docker compose -f /var/lib/casaos/apps/<app-name>/docker-compose.yml down
+  echo '<PI_PASS>' | sudo -S rm -rf /var/lib/casaos/apps/<app-name>
+  echo '<PI_PASS>' | sudo -S systemctl restart casaos-app-management.service
 "
 ```
 

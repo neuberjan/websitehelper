@@ -24,17 +24,17 @@ set -euo pipefail
 
 SSH_HOST="202.61.232.76"
 SSH_USER="hosting236825"
-SSH_PASS='***REMOVED***'
+SSH_PASS="${SSH_PASS:?'SSH_PASS env var must be set'}"
 
 DB_HOST="10.35.232.77"
 
 LIVE_DB="k349529_bcnews"
 LIVE_USER="k349529_bcnews"
-LIVE_PASS='***REMOVED***'
+LIVE_PASS="${LIVE_DB_PASS:?'LIVE_DB_PASS env var must be set'}"
 
 TEST_DB="k349529_bcnewstest"
 TEST_USER="k349529_bcnewstest"
-TEST_PASS='***REMOVED***'
+TEST_PASS="${TEST_DB_PASS:?'TEST_DB_PASS env var must be set'}"
 
 HTTPDOCS="/hosting236825.ae84c.netcup.net/httpdocs"
 COMPOSER="/local/bin/composer"
