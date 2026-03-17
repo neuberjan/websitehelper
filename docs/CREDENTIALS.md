@@ -32,6 +32,9 @@ export ADMIN_PASS='<HIER_EINTRAGEN>'
 
 # API Key
 export API_KEY='<HIER_EINTRAGEN>'
+
+# WordPress Blog (blog.bcbeacon.de)
+export WP_APP_PASS='<HIER_EINTRAGEN>'
 ```
 
 Laden: `source ~/.bcbeacon-secrets`
@@ -196,6 +199,23 @@ $API_KEY
 ```
 
 **Verwendung:** Header `X-API-Key: $API_KEY`
+
+### WordPress Blog (blog.bcbeacon.de)
+
+| Eigenschaft | Wert |
+|-------------|------|
+| **URL** | `https://blog.bcbeacon.de` |
+| **WP REST API** | `https://blog.bcbeacon.de/wp-json/wp/v2/` |
+| **Benutzer** | `admin` |
+| **Application Password** | `$WP_APP_PASS` |
+
+```bash
+# Beispiel: Post erstellen via REST API
+curl -X POST https://blog.bcbeacon.de/wp-json/wp/v2/posts \
+  -u "admin:$WP_APP_PASS" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Test","content":"Inhalt","status":"draft"}'
+```
 
 ---
 
