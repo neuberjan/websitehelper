@@ -1,0 +1,99 @@
+name: grampsweb
+
+services:
+  grampsweb:
+    cpu_shares: 90
+    container_name: grampsweb
+    deploy:
+      resources:
+        limits:
+          memory: "2147483648"
+        reservations:
+          memory: "536870912"
+    environment:
+      GRAMPSWEB_TREE: "Family Tree"
+    hostname: grampsweb
+    image: ghcr.io/gramps-project/grampsweb:latest
+    labels:
+      icon: https://raw.githubusercontent.com/gramps-project/grampsweb/main/frontend/public/logo512.png
+    network_mode: bridge
+    ports:
+      - target: 5000
+        published: "5000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /DATA/AppData/grampsweb/users
+        target: /app/users
+      - type: bind
+        source: /DATA/AppData/grampsweb/indexdir
+        target: /app/indexdir
+      - type: bind
+        source: /DATA/AppData/grampsweb/media
+        target: /app/media
+      - type: bind
+        source: /DATA/AppData/grampsweb/secret
+        target: /app/secret
+      - type: bind
+        source: /DATA/AppData/grampsweb/db
+        target: /app/db
+      - type: bind
+        source: /DATA/AppData/grampsweb/tmp
+        target: /tmp
+    x-casaos:
+      envs:
+        - container: GRAMPSWEB_TREE
+          description:
+            en_us: Name of the Family Tree
+            de_de: Name des Stammbaums
+      ports:
+        - container: "5000"
+          description:
+            en_us: Web UI port
+            de_de: Web-UI Port
+      volumes:
+        - container: /app/users
+          description:
+            en_us: Users data
+            de_de: Nutzerdaten
+        - container: /app/indexdir
+          description:
+            en_us: Search index data
+            de_de: Suchindex
+        - container: /app/media
+          description:
+            en_us: Media files
+            de_de: Mediendateien
+        - container: /app/secret
+          description:
+            en_us: Secret key data
+            de_de: Geheime Schlüsseldaten
+        - container: /app/db
+          description:
+            en_us: Database directory
+            de_de: Datenbankverzeichnis
+        - container: /tmp
+          description:
+            en_us: Temporary files
+            de_de: Temporäre Dateien
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  author: Jan Neuber
+  category: Utilities
+  description:
+    en_us: "Gramps Web is a collaborative genealogy web application based on Gramps."
+    de_de: "Gramps Web ist eine Webanwendung für Genealogie basierend auf Gramps."
+  icon: https://raw.githubusercontent.com/gramps-project/grampsweb/main/frontend/public/logo512.png
+  index: /
+  port_map: "5000"
+  title:
+    en_us: Gramps Web
+    de_de: Gramps Web
+  developer: Gramps Project
+  tagline:
+    en_us: Genealogy via web
+    de_de: Stammbaum im Web

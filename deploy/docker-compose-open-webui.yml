@@ -1,0 +1,72 @@
+name: open-webui
+
+services:
+  open-webui:
+    cpu_shares: 90
+    command: []
+    container_name: open-webui
+    deploy:
+      resources:
+        limits:
+          memory: "2147483648"
+        reservations:
+          memory: "536870912"
+    environment:
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+      WEBUI_AUTH: "false"
+      ENABLE_SIGNUP: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    hostname: open-webui
+    image: ghcr.io/open-webui/open-webui:main
+    labels:
+      icon: https://raw.githubusercontent.com/open-webui/open-webui/main/static/favicon.png
+    network_mode: bridge
+    ports:
+      - target: 8080
+        published: "3000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /DATA/AppData/big-bear-open-webui
+        target: /app/backend/data
+    x-casaos:
+      envs:
+        - container: OLLAMA_BASE_URL
+          description:
+            en_us: Ollama API URL
+            de_de: Ollama API URL
+        - container: WEBUI_AUTH
+          description:
+            en_us: Enable authentication
+            de_de: Authentifizierung aktivieren
+      ports:
+        - container: "8080"
+          description:
+            en_us: Web UI port
+            de_de: Web-UI Port
+      volumes:
+        - container: /app/backend/data
+          description:
+            en_us: Open WebUI data directory
+            de_de: Open WebUI Datenverzeichnis
+
+x-casaos:
+  architectures:
+    - arm64
+  author: Jan Neuber
+  category: Chat
+  description:
+    en_us: "Open WebUI - User-friendly AI interface for Ollama and OpenAI-compatible APIs"
+    de_de: "Open WebUI - Benutzerfreundliche KI-Oberfläche für Ollama und OpenAI-kompatible APIs"
+  icon: https://raw.githubusercontent.com/open-webui/open-webui/main/static/favicon.png
+  index: /
+  port_map: "3000"
+  title:
+    en_us: Open WebUI
+    de_de: Open WebUI
+  developer: Open WebUI
+  tagline:
+    en_us: AI chat interface for local LLMs
+    de_de: KI-Chat-Oberfläche für lokale LLMs
