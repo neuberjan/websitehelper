@@ -3,7 +3,7 @@
 Dieses Dokument beschreibt den reproduzierbaren Upgrade-Prozess von der alten
 PHP/Vanilla-JS-Website auf die neue Laravel-12-Anwendung.
 
-> **Status:** Getestet auf `hosting236825.ae84c.netcup.net` (Netcup Testserver)
+> **Status:** Abgeschlossen. Der Testserver (`hosting236825.ae84c.netcup.net`) wird nicht mehr für BC Beacon genutzt — dort läuft jetzt die Lyst-API. BC Beacon wird direkt auf Live (`bcbeacon.de`) deployed.
 
 ---
 

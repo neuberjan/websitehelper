@@ -4,6 +4,10 @@ set -euo pipefail
 # ═══════════════════════════════════════════════════════════════════════
 # BC Beacon — Repeatable Upgrade Test
 #
+# HINWEIS: Das Testsystem (hosting236825.ae84c.netcup.net) wird nicht mehr
+# für BC Beacon genutzt — dort läuft jetzt die Lyst-API.
+# Dieses Script ist daher obsolet.
+#
 # Setzt die Test-DB auf ein frisches Live-Abbild zurück und spielt
 # den kompletten Laravel-Upgrade-Prozess durch.
 # Eigenständig lauffähig aus dem websitehelper-Repo.

@@ -40,6 +40,9 @@ python3 _validate.py
 Schema importieren und `setup_db.php` ausführen – siehe [docs/SETUP-NETCUP.md](docs/SETUP-NETCUP.md).
 
 ### Laravel Upgrade testen
+
+> **Hinweis:** Das Testsystem (hosting236825.ae84c.netcup.net) wird nicht mehr für BC Beacon genutzt — dort läuft jetzt die Lyst-API. Diese Scripts sind daher obsolet.
+
 ```bash
 # Kompletter Testlauf: Frische Live-DB → Laravel-Upgrade
 ./deploy/reset-and-upgrade-test.sh
